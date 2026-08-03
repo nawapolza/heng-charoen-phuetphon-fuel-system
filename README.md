@@ -2,7 +2,7 @@
 
 ระบบจัดการน้ำมัน รถ คนขับ สต๊อก พนักงาน และรายการย้อนหลัง ออกแบบใหม่ทั้งโครงสร้างหน้าจอ โดยยังใช้ API และความสามารถเดิมครบถ้วน
 
-<<<<<<< HEAD
+ HEAD
 ## V60 — ระบบคำนวณ สต๊อก Realtime และรายงานบัญชีในเว็บเดียว
 
 - ไม่มีหน้าแนะนำบริษัท
@@ -39,7 +39,7 @@ npm run dev:frontend
 
 ตั้งค่าไฟล์ `.env` ตามตัวอย่างใน `backend/.env.example` และ `frontend/.env.example`
 
-<<<<<<< HEAD
+ HEAD
 บน Windows สามารถใช้ `INSTALL_WINDOWS.bat` เพื่อติดตั้ง และ `START_LOCAL_WINDOWS.bat` เพื่อเปิด Backend/Frontend สองหน้าต่างได้
 
 =======

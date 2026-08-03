@@ -30,7 +30,7 @@ const io = new Server(httpServer, {
 });
 
 io.on('connection', (socket) => {
-<<<<<<< HEAD
+ HEAD
   socket.emit('server:hello', { success: true, build: 'heng-charoen-v60-fuel-control', at: new Date().toISOString() });
 =======
   socket.emit('server:hello', { success: true, build: 'heng-charoen-relayout-v1', at: new Date().toISOString() });
@@ -53,7 +53,7 @@ const ITEM_TYPE_MAP = {
   'น้ำแอดบลู': 'แอดบลู',
 };
 
-<<<<<<< HEAD
+ HEAD
 const DEFAULT_STOCK_SETTINGS = {
   'ดีเซล': {
     tank_name: 'ถังดีเซลหลัก',
@@ -85,7 +85,7 @@ function nowIso() {
 }
 
 function today() {
-<<<<<<< HEAD
+ HEAD
   const parts = new Intl.DateTimeFormat('en-CA', {
     timeZone: config.timezone || 'Asia/Bangkok',
     year: 'numeric',
@@ -349,7 +349,7 @@ async function ensureIndexes(db) {
     db.collection('deliveries').createIndex({ 'jobs.destination_place': 1 }),
     db.collection('vehicles').createIndex({ user_id: 1, plate_no: 1 }),
     db.collection('notifications').createIndex({ delivery_id: 1, created_at: -1 }),
-<<<<<<< HEAD
+ HEAD
     db.collection('notifications').createIndex({ kind: 1, item_type: 1, is_read: 1, created_at: -1 }),
     db.collection('stocks').createIndex({ item_type: 1 }, { unique: true }),
     db.collection('stock_movements').createIndex({ item_type: 1, transaction_date: -1 }),
@@ -363,7 +363,7 @@ async function ensureIndexes(db) {
   ]);
 
   for (const itemType of ITEM_TYPES) {
-<<<<<<< HEAD
+ HEAD
     const defaults = DEFAULT_STOCK_SETTINGS[itemType] || DEFAULT_STOCK_SETTINGS['ดีเซล'];
 =======
 >>>>>>> 2682bc12b481495e61c8f3ca5682056a2fa7765c
@@ -373,7 +373,7 @@ async function ensureIndexes(db) {
         $setOnInsert: {
           item_type: itemType,
           balance_liters: 0,
-<<<<<<< HEAD
+ HEAD
           tank_name: defaults.tank_name,
           capacity_liters: defaults.capacity_liters,
           reorder_level_liters: defaults.reorder_level_liters,
@@ -387,7 +387,7 @@ async function ensureIndexes(db) {
       },
       { upsert: true },
     );
-<<<<<<< HEAD
+ HEAD
     const missingFieldUpdates = [
       ['tank_name', defaults.tank_name],
       ['capacity_liters', defaults.capacity_liters],
@@ -721,7 +721,7 @@ async function normalizeDeliveryBody(db, body, files = {}, user, existing = {}) 
   // v37: เลขหัวจ่ายก่อน/หลังเป็นเลขอ้างอิงเท่านั้น ไม่ใช้คำนวณจำนวนลิตรแล้ว
   const odometerBefore = Math.round(toNumber(body.station_meter_before || body.nozzle_meter_before || body.odometer_before, toNumber(existing.station_meter_before || existing.odometer_before, 0)));
   const odometerAfter = Math.round(toNumber(body.station_meter_after || body.nozzle_meter_after || body.odometer_after, toNumber(existing.station_meter_after || existing.odometer_after, 0)));
-<<<<<<< HEAD
+ HEAD
   const requestedQuantityLiters = round2(toNumber(
     body.actual_filled_liters || body.station_liters || body.quantity_liters || body.liters || body.adblue_liters,
     toNumber(existing.actual_filled_liters, toNumber(existing.quantity_liters, 0)),
@@ -752,7 +752,7 @@ async function normalizeDeliveryBody(db, body, files = {}, user, existing = {}) 
   const recommendedFuelLiters = itemType === 'ดีเซล' && distanceKm > 0 && expectedFuelEfficiency > 0
     ? round2(distanceKm / expectedFuelEfficiency)
     : 0;
-<<<<<<< HEAD
+ HEAD
   // v60: ดีเซลยังคำนวณลิตรตามมาตรฐานจากระยะทาง แต่เก็บ “ลิตรเติมจริง” แยกเพื่อวิเคราะห์ส่วนต่าง
   // ถ้าพนักงานไม่กรอกลิตรจริง ระบบใช้ลิตรตามมาตรฐานเป็นค่าเริ่มต้น จึงไม่กระทบการทำงานเดิม
   const quantityLiters = requestedQuantityLiters > 0 ? requestedQuantityLiters : recommendedFuelLiters;
@@ -766,7 +766,7 @@ async function normalizeDeliveryBody(db, body, files = {}, user, existing = {}) 
     : 0;
   const priceBahtPerLiter = toNumber(body.price_baht_per_liter || body.price_per_liter, toNumber(existing.price_baht_per_liter || existing.price_per_liter, 0));
   const explicitAmount = toNumber(body.amount_baht, 0);
-<<<<<<< HEAD
+ HEAD
   const actualAmount = expectedAmountFromPrice(quantityLiters, priceBahtPerLiter);
   const standardAmount = expectedAmountFromPrice(standardFuelLiters, priceBahtPerLiter);
   const amountBaht = actualAmount > 0 ? actualAmount : correctAmountIfCommaBug(explicitAmount, quantityLiters, priceBahtPerLiter);
@@ -811,7 +811,7 @@ async function normalizeDeliveryBody(db, body, files = {}, user, existing = {}) 
     cargo_stone_weight: jobs.length ? jobsSummary.cargo_stone_weight : toNumber(body.cargo_stone_weight, toNumber(existing.cargo_stone_weight, 0)),
     cargo_sand_weight: jobs.length ? jobsSummary.cargo_sand_weight : toNumber(body.cargo_sand_weight, toNumber(existing.cargo_sand_weight, 0)),
     quantity_liters: quantityLiters,
-<<<<<<< HEAD
+ HEAD
     actual_filled_liters: quantityLiters,
     standard_fuel_liters: standardFuelLiters,
     fuel_variance_liters: fuelVarianceLiters,
@@ -889,7 +889,7 @@ async function normalizeDeliveryBody(db, body, files = {}, user, existing = {}) 
 async function createAutoNotifications(db, deliveryId, data) {
   const alerts = [];
   if (Number(data.quantity_liters || 0) >= 280) alerts.push(['ปริมาณสูงผิดปกติ', 'รายการนี้มีปริมาณตั้งแต่ 280 ลิตรขึ้นไป กรุณาตรวจสอบ', 'danger']);
-<<<<<<< HEAD
+ HEAD
   const varianceLiters = toNumber(data.fuel_variance_liters, 0);
   const standardLiters = Math.max(0, toNumber(data.standard_fuel_liters || data.recommended_fuel_liters, 0));
   if (varianceLiters > Math.max(5, standardLiters * 0.1)) {
@@ -911,7 +911,7 @@ async function createAutoNotifications(db, deliveryId, data) {
   })));
 }
 
-<<<<<<< HEAD
+ HEAD
 function stockLevelInfo(stock = {}) {
   const itemType = normalizeItemType(stock.item_type) || cleanString(stock.item_type) || 'ดีเซล';
   const defaults = DEFAULT_STOCK_SETTINGS[itemType] || DEFAULT_STOCK_SETTINGS['ดีเซล'];
@@ -1030,7 +1030,7 @@ async function applyStockChange(db, { item_type, change_liters, transaction_type
     transaction_date: parseDateOrNull(transaction_date) || today(),
     created_at: nowIso(),
   });
-<<<<<<< HEAD
+ HEAD
   const stockStatus = await evaluateStockLevel(db, itemType);
   return { movement_id: inserted.insertedId, stock: stockStatus };
 =======
@@ -1210,7 +1210,7 @@ async function enrichDelivery(db, delivery) {
   d.station_meter_after = after;
   d.station_meter_delta_liters = toNumber(d.station_meter_delta_liters, 0);
   d.nozzle_liters = toNumber(d.nozzle_liters, 0);
-<<<<<<< HEAD
+ HEAD
   d.quantity_liters = round2(d.actual_filled_liters || d.quantity_liters || d.station_liters || d.liters || 0);
   d.actual_filled_liters = d.quantity_liters;
 =======
@@ -1223,7 +1223,7 @@ async function enrichDelivery(db, delivery) {
   )));
   d.expected_fuel_efficiency_km_per_liter = expectedRate;
   d.recommended_fuel_liters = distance > 0 && expectedRate > 0 ? round2(distance / expectedRate) : 0;
-<<<<<<< HEAD
+ HEAD
   d.standard_fuel_liters = d.item_type === 'ดีเซล' && d.recommended_fuel_liters > 0
     ? d.recommended_fuel_liters
     : round2(d.standard_fuel_liters || d.quantity_liters || 0);
@@ -1381,7 +1381,7 @@ function securityHeaders(_req, res, next) {
   res.setHeader('X-Content-Type-Options', 'nosniff');
   res.setHeader('X-Frame-Options', 'SAMEORIGIN');
   res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
-<<<<<<< HEAD
+ HEAD
   res.setHeader('Permissions-Policy', 'camera=(self), microphone=(), geolocation=()');
 =======
   res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
@@ -1427,7 +1427,7 @@ app.use((req, _res, next) => {
   next();
 });
 
-<<<<<<< HEAD
+ HEAD
 app.get('/ping', (req, res) => jsonResponse(res, { success: true, message: 'pong', build: 'heng-charoen-v60-fuel-control', time: nowIso() }));
 =======
 app.get('/ping', (req, res) => jsonResponse(res, { success: true, message: 'pong', build: 'heng-charoen-relayout-v1', time: nowIso() }));
@@ -1454,7 +1454,7 @@ const router = express.Router();
 router.get('/', (_req, res) => jsonResponse(res, {
   success: true,
   name: 'Heng Charoen Phuetphon Fuel Management API',
-<<<<<<< HEAD
+ HEAD
   build: 'heng-charoen-v60-fuel-control',
   item_types: ITEM_TYPES,
   endpoints: ['/health', '/auth/login', '/auth/me', '/deliveries', '/dashboard/stats', '/stocks/status', '/stocks', '/reports/monthly', '/notifications', '/users', '/vehicles'],
@@ -1467,7 +1467,7 @@ router.get('/', (_req, res) => jsonResponse(res, {
 
 router.get('/health', asyncHandler(async (req, res) => {
   await req.db.command({ ping: 1 });
-<<<<<<< HEAD
+ HEAD
   jsonResponse(res, { success: true, message: 'Backend connected to MongoDB successfully', database: config.mongodb.db, build: 'heng-charoen-v60-fuel-control', time: nowIso() });
 =======
   jsonResponse(res, { success: true, message: 'Backend connected to MongoDB successfully', database: config.mongodb.db, build: 'heng-charoen-relayout-v1', time: nowIso() });
@@ -1494,7 +1494,7 @@ router.get('/item-types', (_req, res) => jsonResponse(res, { success: true, data
 router.get('/meta/fields', requireAuth, (_req, res) => jsonResponse(res, {
   success: true,
   data: {
-<<<<<<< HEAD
+ HEAD
     collections: ['users', 'vehicles', 'deliveries', 'stocks', 'stock_movements', 'stock_audits', 'notifications'],
 =======
     collections: ['users', 'vehicles', 'deliveries', 'stocks', 'stock_movements', 'notifications'],
@@ -1506,7 +1506,7 @@ router.get('/meta/fields', requireAuth, (_req, res) => jsonResponse(res, {
       origin_place: 'จุดรับสินค้า / บ่อต้นทาง', destination_place: 'จุดลงงาน / ปลายทาง',
       load_date: 'วันที่บรรทุก', unload_date: 'วันที่ลงของ', cargo_name: 'ประเภทสินค้า / ชื่องาน', loading_weight_kg: 'น้ำหนักต้นทาง (กก.)', unloading_weight_kg: 'น้ำหนักปลายทาง (กก.)', cargo_stone_weight: 'น้ำหนักหิน', cargo_sand_weight: 'น้ำหนักไม้สับ',
       trip_fee_baht: 'ค่าเที่ยว', allowance_baht: 'เบี้ยเลี้ยง', other_income_baht: 'รายได้อื่น', total_income_baht: 'รวมรายได้', wage_payer: 'ผู้จ่ายค่าแรง', payment_status: 'สถานะรายได้',
-<<<<<<< HEAD
+ HEAD
       quantity_liters: 'จำนวนลิตรเติมจริง', actual_filled_liters: 'จำนวนลิตรเติมจริง', standard_fuel_liters: 'จำนวนลิตรมาตรฐาน', recommended_fuel_liters: 'จำนวนลิตรที่คำนวณจากระยะทาง', fuel_variance_liters: 'ส่วนต่างลิตรจริงเทียบมาตรฐาน', fuel_variance_baht: 'มูลค่าส่วนต่างน้ำมัน', calculation_mode: 'รูปแบบการคำนวณ', price_baht_per_liter: 'ราคาน้ำมันลิตรละ (บาท)', amount_baht: 'ค่าใช้จ่ายเติมจริง', expected_fuel_efficiency_km_per_liter: 'อัตราประจำรถ กม./ลิตร', estimated_distance_km: 'ระยะทางตรวจสอบจากลิตร', distance_km: 'ระยะทางที่กรอก', odometer_before: 'เลขหัวจ่ายก่อนเติม (อ้างอิง)', odometer_after: 'เลขหัวจ่ายหลังเติม (อ้างอิง)', fuel_efficiency_km_per_liter: 'อัตราที่คำนวณย้อนกลับ กม./ลิตร',
 =======
       quantity_liters: 'จำนวนลิตรตามเรท', recommended_fuel_liters: 'จำนวนลิตรที่คำนวณจากระยะทาง', calculation_mode: 'รูปแบบการคำนวณ', price_baht_per_liter: 'ราคาน้ำมันลิตรละ (บาท)', amount_baht: 'ยอดเงินตามเรท', expected_fuel_efficiency_km_per_liter: 'อัตราประจำรถ กม./ลิตร', estimated_distance_km: 'ระยะทางตรวจสอบจากลิตร', distance_km: 'ระยะทางที่กรอก', odometer_before: 'เลขหัวจ่ายก่อนเติม (อ้างอิง)', odometer_after: 'เลขหัวจ่ายหลังเติม (อ้างอิง)', fuel_efficiency_km_per_liter: 'อัตราที่คำนวณย้อนกลับ กม./ลิตร',
@@ -1712,7 +1712,7 @@ router.delete('/deliveries/:id', requireAuth, asyncHandler(async (req, res) => {
   jsonResponse(res, { success: true });
 }));
 
-<<<<<<< HEAD
+ HEAD
 router.get('/stocks/status', requireAuth, asyncHandler(async (req, res) => {
   const rows = await req.db.collection('stocks').find({ item_type: { $in: ITEM_TYPES } }).toArray();
   const map = new Map(rows.map((row) => [row.item_type, row]));
@@ -1875,7 +1875,7 @@ router.get('/dashboard/stats', requireAuth, requireOwner, asyncHandler(async (re
   const totalLiters = enriched.reduce((sum, row) => sum + toNumber(row.quantity_liters, 0), 0);
   const totalAmount = enriched.reduce((sum, row) => sum + toNumber(row.amount_baht, 0), 0);
   const totalDistance = enriched.reduce((sum, row) => sum + toNumber(row.distance_km, 0), 0);
-<<<<<<< HEAD
+ HEAD
   const totalStandardLiters = enriched.reduce((sum, row) => sum + toNumber(row.standard_fuel_liters || row.recommended_fuel_liters || row.quantity_liters, 0), 0);
   const totalFuelVarianceLiters = enriched.reduce((sum, row) => sum + toNumber(row.fuel_variance_liters, 0), 0);
   const overStandardLiters = enriched.reduce((sum, row) => sum + Math.max(0, toNumber(row.fuel_variance_liters, 0)), 0);
@@ -1899,7 +1899,7 @@ router.get('/dashboard/stats', requireAuth, requireOwner, asyncHandler(async (re
   const byPlate = groupSum(enriched, 'plate_no', 'quantity_liters', 8);
   const byDriver = groupSum(enriched, 'driver_name', 'quantity_liters', 8);
   const byRecorder = groupSum(enriched, 'recorder_name', 'quantity_liters', 8);
-<<<<<<< HEAD
+ HEAD
   const lowStocks = stocks.map(stockLevelInfo).filter((stock) => stock.level_status !== 'ready');
 =======
   const lowStocks = stocks.map(mongoToPlain).filter((stock) => toNumber(stock.balance_liters, 0) < 100);
@@ -1913,7 +1913,7 @@ router.get('/dashboard/stats', requireAuth, requireOwner, asyncHandler(async (re
       total_amount: round2(totalAmount),
       avg_price_per_liter: totalLiters > 0 ? round2(totalAmount / totalLiters) : 0,
       total_distance_km: round2(totalDistance),
-<<<<<<< HEAD
+ HEAD
       total_standard_liters: round2(totalStandardLiters),
       total_fuel_variance_liters: round2(totalFuelVarianceLiters),
       over_standard_liters: round2(overStandardLiters),
@@ -1933,7 +1933,7 @@ router.get('/dashboard/stats', requireAuth, requireOwner, asyncHandler(async (re
       by_driver: byDriver,
       by_recorder: byRecorder,
       latest: enriched.slice(0, 10),
-<<<<<<< HEAD
+ HEAD
       stocks: stocks.map(stockLevelInfo),
       low_stocks: stocks.map(stockLevelInfo).filter((stock) => stock.level_status !== 'ready'),
     },
@@ -2066,7 +2066,7 @@ app.use((err, _req, res, _next) => {
 });
 
 httpServer.listen(config.port, () => {
-<<<<<<< HEAD
+ HEAD
   console.log(`Heng Charoen Phuetphon Fuel Management API fuel-control-v60 running on port ${config.port}`);
 =======
   console.log(`Heng Charoen Phuetphon Fuel Management API exact-decimal-v21 running on port ${config.port}`);

@@ -94,7 +94,7 @@ export const api = {
   createDelivery: (formData) => apiRequest('/deliveries', { method: 'POST', body: formData }),
   updateDelivery: (id, formData) => apiRequest(`/deliveries/${id}`, { method: 'PUT', body: formData }),
   deleteDelivery: (id) => apiRequest(`/deliveries/${id}`, { method: 'DELETE' }),
-<<<<<<< HEAD
+ HEAD
   stockStatus: () => apiRequest('/stocks/status'),
   stocks: () => apiRequest('/stocks'),
   stockTransactions: () => apiRequest('/stocks/transactions'),
@@ -116,7 +116,7 @@ export const api = {
   createVehicle: (body) => apiRequest('/vehicles', { method: 'POST', body }),
   updateVehicle: (id, body) => apiRequest(`/vehicles/${id}`, { method: 'PUT', body }),
   deleteVehicle: (id) => apiRequest(`/vehicles/${id}`, { method: 'DELETE' }),
-<<<<<<< HEAD
+ HEAD
   monthlyReport: (month) => apiRequest(`/reports/monthly${query({ month })}`),
 =======
 >>>>>>> 2682bc12b481495e61c8f3ca5682056a2fa7765c

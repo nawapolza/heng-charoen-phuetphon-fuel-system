@@ -3,7 +3,7 @@ import Layout from './components/Layout.jsx';
 import Loading from './components/Loading.jsx';
 import { AuthProvider, useAuth } from './contexts/AuthContext.jsx';
 import DashboardPage from './pages/DashboardPage.jsx';
-<<<<<<< HEAD
+ HEAD
 import FuelCalculatorPage from './pages/FuelCalculatorPage.jsx';
 =======
 >>>>>>> 2682bc12b481495e61c8f3ca5682056a2fa7765c
@@ -11,7 +11,7 @@ import DeliveriesPage from './pages/DeliveriesPage.jsx';
 import EmployeeQuickPage from './pages/EmployeeQuickPage.jsx';
 import LoginPage from './pages/LoginPage.jsx';
 import NotificationsPage from './pages/NotificationsPage.jsx';
-<<<<<<< HEAD
+ HEAD
 import MonthlyReportsPage from './pages/MonthlyReportsPage.jsx';
 import StockPage from './pages/StockPage.jsx';
 import StockStatusPage from './pages/StockStatusPage.jsx';
@@ -42,7 +42,7 @@ function AppShell() {
     if (!isOwner) {
       return {
         quick: <EmployeeQuickPage />,
-<<<<<<< HEAD
+ HEAD
         calculator: <FuelCalculatorPage />,
         deliveries: <DeliveriesPage />,
         stocks: <StockStatusPage />,
@@ -53,7 +53,7 @@ function AppShell() {
     }
     return {
       dashboard: <DashboardPage setPage={setPage} />,
-<<<<<<< HEAD
+ HEAD
       calculator: <FuelCalculatorPage />,
       quick: <EmployeeQuickPage />,
       deliveries: <DeliveriesPage />,

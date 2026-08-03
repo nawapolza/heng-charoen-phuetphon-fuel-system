@@ -23,7 +23,7 @@ import { alertError, toastInfo } from '../utils/alerts.js';
 import { date, datetime, money, number, today } from '../utils/format.js';
 
 function startOfMonth() {
-<<<<<<< HEAD
+ HEAD
   return `${today().slice(0, 7)}-01`;
 =======
   const d = new Date();
@@ -35,7 +35,7 @@ function startOfMonth() {
 function sevenDaysAgo() {
   const d = new Date();
   d.setDate(d.getDate() - 6);
-<<<<<<< HEAD
+ HEAD
   const year = d.getFullYear();
   const month = String(d.getMonth() + 1).padStart(2, '0');
   const day = String(d.getDate()).padStart(2, '0');
@@ -134,7 +134,7 @@ export default function DashboardPage({ setPage }) {
 
       <section className="dashboard-metrics">
         <Metric icon={ClipboardList} label="งานทั้งหมด" value={number(data?.total_trips)} unit="งาน" helper={`รวมจาก ${number(data?.total_records)} รายการรถ`} />
-<<<<<<< HEAD
+ HEAD
         <Metric icon={Droplets} label="น้ำมันเติมจริง" value={number(data?.total_liters, 2)} unit="ลิตร" helper={`มาตรฐาน ${number(data?.total_standard_liters, 2)} ลิตร`} />
         <Metric icon={WalletCards} label="ค่าใช้จ่ายรวม" value={money(data?.total_amount)} helper={`เฉลี่ย ${number(data?.avg_price_per_liter, 2)} บาท/ลิตร`} />
         <Metric icon={Route} label="ระยะทางรวม" value={number(data?.total_distance_km, 2)} unit="กม." helper="รวมระยะทางที่บันทึก" />
@@ -162,7 +162,7 @@ export default function DashboardPage({ setPage }) {
       <section className="dashboard-stock-grid">
         {(data?.stocks || []).map((stock) => {
           const balance = Number(stock.balance_liters || 0);
-<<<<<<< HEAD
+ HEAD
           const status = stock.level_status || 'ready';
           const state = stock.level_label || (status === 'critical' ? 'วิกฤต' : status === 'low' ? 'ควรเตรียมเติม' : 'พร้อมให้บริการ');
           const tone = status === 'critical' ? 'danger' : status === 'low' ? 'warning' : 'normal';
@@ -180,7 +180,7 @@ export default function DashboardPage({ setPage }) {
                 </div>
                 <span><Boxes size={22} /></span>
               </div>
-<<<<<<< HEAD
+ HEAD
               <div className="stock-progress"><i style={{ width: `${Math.max(balance > 0 ? 4 : 0, Math.min(100, percent))}%` }} /></div>
               <div className="stock-summary-foot"><span>{state} · {number(percent, 0)}%</span><small>{stock.tank_name || 'ถังหลัก'} / {number(stock.capacity_liters, 0)} ลิตร</small></div>
 =======

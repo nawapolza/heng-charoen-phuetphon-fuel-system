@@ -196,7 +196,7 @@ function LinkStatus({ active }) {
   return <span className={active ? 'is-ready' : ''}>{active ? 'เชื่อมพร้อมใช้งาน' : 'รอกรอกข้อมูลหลัก'}</span>;
 }
 
-<<<<<<< HEAD
+ HEAD
 function Field({ label, value, onChange, required = false, hint = '', type = 'text', step = undefined }) {
 =======
 function Field({ label, value, onChange, required = false, hint = '', type = 'text', step }) {

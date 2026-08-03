@@ -29,7 +29,7 @@ function isPdf(path = '') {
 
 function litersValue(row) {
   return roundDecimal(
-<<<<<<< HEAD
+ HEAD
     row?.actual_filled_liters
       || row?.quantity_liters
 =======
@@ -44,7 +44,7 @@ function litersValue(row) {
   );
 }
 
-<<<<<<< HEAD
+ HEAD
 function standardLitersValue(row) {
   return roundDecimal(row?.standard_fuel_liters || row?.recommended_fuel_liters || row?.quantity_liters || 0, 2);
 }
@@ -200,7 +200,7 @@ export default function CaptureReceiptModal({ row, onClose }) {
 
   const fillDateText = `${date(row.fill_date || row.work_date)}${row.fill_time ? ` เวลา ${row.fill_time}` : ''}`;
   const liters = litersValue(row);
-<<<<<<< HEAD
+ HEAD
   const standardLiters = standardLitersValue(row);
   const varianceLiters = varianceLitersValue(row);
 =======
@@ -387,7 +387,7 @@ export default function CaptureReceiptModal({ row, onClose }) {
                     <div className="mt-1.5 grid grid-cols-4 gap-1.5">
                       <CompactMetric label="จำนวนงาน" value={`${jobs.length} งาน`} />
                       <CompactMetric label="ระยะทาง" value={distance ? `${number(distance, 0)} กม.` : '-'} />
-<<<<<<< HEAD
+ HEAD
                       <CompactMetric label="ลิตรเติมจริง" value={liters ? `${number(liters, 2)} ลิตร` : '-'} />
 =======
                       <CompactMetric label="จำนวนลิตร" value={liters ? `${number(liters, 2)} ลิตร` : '-'} />
@@ -416,7 +416,7 @@ export default function CaptureReceiptModal({ row, onClose }) {
                   <div className="grid grid-cols-2 gap-1.5 sm:gap-2">
                     <CaptureBox label="วันที่/เวลาเติม" value={fillDateText} />
                     <CaptureBox label="จำนวนงาน" value={`${jobs.length} งาน`} />
-<<<<<<< HEAD
+ HEAD
                     <CaptureBox label="ลิตรเติมจริง" value={liters ? `${number(liters, 2)} ลิตร` : '-'} tone="blue" />
                     <CaptureBox label="ลิตรมาตรฐาน" value={`${number(standardLiters, 2)} ลิตร`} tone="blue" />
                     <CaptureBox label="ส่วนต่าง" value={`${varianceLiters > 0 ? '+' : ''}${number(varianceLiters, 2)} ลิตร`} tone={varianceLiters > 0 ? 'red' : 'green'} />
@@ -434,7 +434,7 @@ export default function CaptureReceiptModal({ row, onClose }) {
                     <div className="grid grid-cols-2 gap-1.5">
                       <MiniCheck icon={Gauge} label="หัวจ่ายก่อน" value={meterText(before)} />
                       <MiniCheck icon={Gauge} label="หัวจ่ายหลัง" value={meterText(after)} />
-<<<<<<< HEAD
+ HEAD
                       <MiniCheck icon={Route} label="จริง / มาตรฐาน" value={liters ? `${number(liters, 2)} / ${number(standardLiters, 2)} ลิตร` : '-'} />
 =======
                       <MiniCheck icon={Route} label="จำนวนลิตรตามเรท" value={liters ? `${number(liters, 2)} ลิตร` : '-'} />
@@ -555,7 +555,7 @@ function CompactMetric({ label, value }) {
 }
 
 function CaptureBox({ label, value, tone = 'slate' }) {
-<<<<<<< HEAD
+ HEAD
   const classes = {
     blue: 'border-blue-100 bg-blue-50 text-blue-950',
     green: 'border-emerald-100 bg-emerald-50 text-emerald-950',

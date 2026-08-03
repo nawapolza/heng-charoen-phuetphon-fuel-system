@@ -1,6 +1,6 @@
 {
   "name": "heng-charoen-phuetphon-fuel-system",
-<<<<<<< HEAD
+ HEAD
   "version": "60.0.0",
 =======
   "version": "59.0.0",
@@ -12,7 +12,7 @@
     "dev:backend": "cd backend && npm run dev",
     "dev:frontend": "cd frontend && npm run dev",
     "build": "cd frontend && npm ci --no-audit --no-fund && node ./node_modules/vite/bin/vite.js build",
-<<<<<<< HEAD
+ HEAD
     "start": "cd backend && npm start",
     "verify:v60": "node scripts/verify-v60.js"
 =======

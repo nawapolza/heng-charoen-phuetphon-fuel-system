@@ -6,7 +6,7 @@ function safeText(value, fallback = '-') {
 
 function litersValue(row = {}) {
   return roundDecimal(
-<<<<<<< HEAD
+ HEAD
     row.actual_filled_liters
       || row.quantity_liters
 =======
@@ -21,7 +21,7 @@ function litersValue(row = {}) {
   );
 }
 
-<<<<<<< HEAD
+ HEAD
 function standardLitersValue(row = {}) {
   return roundDecimal(row.standard_fuel_liters || row.recommended_fuel_liters || row.quantity_liters || 0, 2);
 }
@@ -280,7 +280,7 @@ function drawInfoCard(ctx, x, y, width, height, label, value, tone = 'blue') {
     blue: ['#eff6ff', '#bfdbfe', '#1e3a8a', '#3b82f6'],
     slate: ['#f8fafc', '#e2e8f0', '#0f172a', '#64748b'],
     green: ['#ecfdf5', '#a7f3d0', '#064e3b', '#10b981'],
-<<<<<<< HEAD
+ HEAD
     danger: ['#fff1f2', '#fecdd3', '#881337', '#e11d48'],
 =======
 >>>>>>> 2682bc12b481495e61c8f3ca5682056a2fa7765c
@@ -332,7 +332,7 @@ export async function createReceiptImageBlob(row = {}) {
   const otherIncome = roundDecimal(jobs.reduce((sum, job) => sum + incomeValue(job, 'other_income_baht'), 0), 2) || incomeValue(row, 'other_income_baht');
   const totalIncome = totalIncomeValue(row);
   const liters = litersValue(row);
-<<<<<<< HEAD
+ HEAD
   const standardLiters = standardLitersValue(row);
   const varianceLiters = varianceLitersValue(row);
 =======
@@ -456,7 +456,7 @@ export async function createReceiptImageBlob(row = {}) {
   const right = 562;
   drawInfoCard(ctx, left, 1272, cardWidth, cardHeight, 'วันที่/เวลาเติม', fillDateText(row), 'slate');
   drawInfoCard(ctx, right, 1272, cardWidth, cardHeight, 'ระยะทาง', distance ? `${number(distance, 2)} กม.` : '-', 'blue');
-<<<<<<< HEAD
+ HEAD
   drawInfoCard(ctx, left, 1394, cardWidth, cardHeight, 'ลิตรเติมจริง', liters ? `${number(liters, 2)} ลิตร` : '-', 'blue');
   drawInfoCard(ctx, right, 1394, cardWidth, cardHeight, 'ลิตรมาตรฐาน', `${number(standardLiters, 2)} ลิตร`, 'blue');
   drawInfoCard(ctx, left, 1516, cardWidth, cardHeight, 'ส่วนต่างการใช้', `${varianceLiters > 0 ? '+' : ''}${number(varianceLiters, 2)} ลิตร`, varianceLiters > 0 ? 'danger' : 'green');

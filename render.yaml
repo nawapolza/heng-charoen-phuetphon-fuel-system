@@ -16,7 +16,7 @@ services:
         sync: false
       - key: CORS_ALLOW_ALL
         value: true
-<<<<<<< HEAD
+ HEAD
       - key: APP_TIMEZONE
         value: Asia/Bangkok
 =======
