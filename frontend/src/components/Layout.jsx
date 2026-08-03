@@ -29,6 +29,7 @@ const navBase = [
   { key: 'quick', label: 'บันทึกเติมน้ำมัน', short: 'บันทึก', eyebrow: 'สร้างรายการใหม่', icon: ClipboardList },
   { key: 'deliveries', label: 'รายการย้อนหลัง', short: 'รายการ', eyebrow: 'ค้นหาและตรวจสอบ', icon: History },
   { key: 'stocks', label: 'สต๊อกน้ำมัน', short: 'สต๊อก', eyebrow: 'ยอดคงเหลือเรียลไทม์', icon: Boxes },
+  { key: 'availability', label: 'น้ำมันทุกสาขา', short: 'ทุกสาขา', eyebrow: 'สำหรับคนขับดูจุดเติม', icon: MapPin },
   { key: 'reports', label: 'สรุปส่งบัญชี', short: 'รายงาน', eyebrow: 'รายงานประจำเดือน', icon: FileSpreadsheet, ownerOnly: true },
   { key: 'vehicles', label: 'รถและคนขับ', short: 'รถ', eyebrow: 'จัดการรถ', icon: Car, ownerOnly: true },
   { key: 'users', label: 'พนักงาน', short: 'ทีมงาน', eyebrow: 'บัญชีและสิทธิ์', icon: Users, ownerOnly: true },

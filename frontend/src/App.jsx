@@ -15,6 +15,7 @@ import StockPage from './pages/StockPage.jsx';
 import StockStatusPage from './pages/StockStatusPage.jsx';
 import UsersPage from './pages/UsersPage.jsx';
 import VehiclesPage from './pages/VehiclesPage.jsx';
+import BranchStockOverviewPage from './pages/BranchStockOverviewPage.jsx';
 
 export default function App() {
   return (
@@ -53,6 +54,7 @@ function AppShell() {
         calculator: <FuelCalculatorPage key={`calculator-${pageKey}`} />,
         deliveries: <DeliveriesPage key={`deliveries-${pageKey}`} />,
         stocks: <StockStatusPage key={`stocks-${pageKey}`} />,
+        availability: <BranchStockOverviewPage key={`availability-${pageKey}`} />,
       };
     }
     return {
@@ -62,6 +64,7 @@ function AppShell() {
       quick: <EmployeeQuickPage key={`quick-${pageKey}`} />,
       deliveries: <DeliveriesPage key={`deliveries-${pageKey}`} />,
       stocks: <StockPage key={`stocks-${pageKey}`} />,
+      availability: <BranchStockOverviewPage key={`availability-${pageKey}`} />,
       reports: <MonthlyReportsPage key={`reports-${pageKey}`} />,
       users: <UsersPage key={`users-${pageKey}`} />,
       vehicles: <VehiclesPage key={`vehicles-${pageKey}`} />,

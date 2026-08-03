@@ -1938,6 +1938,25 @@ router.delete('/deliveries/:id', requireAuth, asyncHandler(async (req, res) => {
   jsonResponse(res, { success: true });
 }));
 
+
+// Driver cross-branch fuel availability (read only)
+router.get('/stocks/all-branches-status', requireAuth, asyncHandler(async (req, res) => {
+  const branches = await req.db.collection('branches').find({ is_active: { $ne: 0 } }, { sort: { name: 1 } }).toArray();
+  const stocks = await req.db.collection('stocks').find({}).toArray();
+  const data = branches.map((b) => ({
+    branch_id: String(b._id),
+    branch_name: b.name,
+    branch_code: b.code,
+    items: stocks.filter((x) => String(x.branch_id) === String(b._id)).map((x) => ({
+      item_type: x.item_type,
+      balance_liters: Number(x.balance_liters || 0),
+      level_status: stockLevelInfo(x).level_status,
+      updated_at: x.updated_at || x.created_at || null
+    }))
+  }));
+  jsonResponse(res, { success: true, data });
+}));
+
 router.get('/stocks/status', requireAuth, asyncHandler(async (req, res) => {
   const branch = await resolveBranchContext(req.db, req.user, req);
   const rows = await req.db.collection('stocks').find({ branch_id: branch.id, item_type: { $in: ITEM_TYPES } }).toArray();
