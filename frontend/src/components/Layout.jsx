@@ -3,8 +3,11 @@ import {
   Boxes,
   Car,
   ClipboardList,
+<<<<<<< HEAD
   Calculator,
   FileSpreadsheet,
+=======
+>>>>>>> 2682bc12b481495e61c8f3ca5682056a2fa7765c
   Gauge,
   History,
   LogOut,
@@ -21,11 +24,17 @@ import { confirmAction } from '../utils/alerts.js';
 
 const navBase = [
   { key: 'dashboard', label: 'หน้าหลัก', short: 'หน้าหลัก', eyebrow: 'ภาพรวมระบบ', icon: Gauge, ownerOnly: true },
+<<<<<<< HEAD
   { key: 'calculator', label: 'คำนวณน้ำมัน', short: 'คำนวณ', eyebrow: 'ระยะทางและค่าใช้จ่าย', icon: Calculator },
   { key: 'quick', label: 'บันทึกเติมน้ำมัน', short: 'บันทึก', eyebrow: 'สร้างรายการใหม่', icon: ClipboardList },
   { key: 'deliveries', label: 'รายการย้อนหลัง', short: 'รายการ', eyebrow: 'ค้นหาและตรวจสอบ', icon: History },
   { key: 'stocks', label: 'สต๊อกน้ำมัน', short: 'สต๊อก', eyebrow: 'ยอดคงเหลือเรียลไทม์', icon: Boxes },
   { key: 'reports', label: 'สรุปส่งบัญชี', short: 'รายงาน', eyebrow: 'รายงานประจำเดือน', icon: FileSpreadsheet, ownerOnly: true },
+=======
+  { key: 'quick', label: 'บันทึกงานน้ำมัน', short: 'บันทึก', eyebrow: 'สร้างรายการใหม่', icon: ClipboardList },
+  { key: 'deliveries', label: 'รายการย้อนหลัง', short: 'รายการ', eyebrow: 'ค้นหาและตรวจสอบ', icon: History },
+  { key: 'stocks', label: 'คลังและสต๊อก', short: 'สต๊อก', eyebrow: 'ยอดคงเหลือ', icon: Boxes, ownerOnly: true },
+>>>>>>> 2682bc12b481495e61c8f3ca5682056a2fa7765c
   { key: 'vehicles', label: 'รถและคนขับ', short: 'รถ', eyebrow: 'จัดการรถ', icon: Car, ownerOnly: true },
   { key: 'users', label: 'พนักงาน', short: 'ทีมงาน', eyebrow: 'บัญชีและสิทธิ์', icon: Users, ownerOnly: true },
   { key: 'notifications', label: 'แจ้งเตือน', short: 'แจ้งเตือน', eyebrow: 'รายการที่ต้องตรวจ', icon: Bell, ownerOnly: true },
@@ -66,7 +75,11 @@ export default function Layout({ page, setPage, children }) {
   );
 
   const mobileItems = useMemo(() => {
+<<<<<<< HEAD
     const keys = isOwner ? ['dashboard', 'calculator', 'quick', 'reports', 'notifications'] : ['quick', 'calculator', 'deliveries', 'stocks'];
+=======
+    const keys = isOwner ? ['dashboard', 'deliveries', 'quick', 'notifications'] : ['deliveries', 'quick'];
+>>>>>>> 2682bc12b481495e61c8f3ca5682056a2fa7765c
     return keys.map((key) => navItems.find((item) => item.key === key)).filter(Boolean);
   }, [isOwner, navItems]);
 

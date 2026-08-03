@@ -6,7 +6,11 @@ import { useAuth } from '../contexts/AuthContext.jsx';
 import { alertError, confirmAction, toastInfo, toastSuccess } from '../utils/alerts.js';
 import { ITEM_TYPES, currentTime, money, number, parseDecimal, roundDecimal, today } from '../utils/format.js';
 
+<<<<<<< HEAD
 const DRAFT_VERSION = 'oilops_delivery_draft_v60_fuel_control';
+=======
+const DRAFT_VERSION = 'oilops_delivery_draft_v58_multi_jobs';
+>>>>>>> 2682bc12b481495e61c8f3ca5682056a2fa7765c
 const DEVICE_KEY = 'oilops_device_id_v13';
 const DEVICE_RECORDER_KEY = 'oilops_device_recorder_name_v22';
 const IMAGE_UPLOAD_MAX_WIDTH = 1800;
@@ -60,7 +64,10 @@ const blank = {
   estimated_distance_km: '',
   recommended_fuel_liters: '',
   calculation_mode: 'distance_to_liters',
+<<<<<<< HEAD
   actual_filled_liters: '',
+=======
+>>>>>>> 2682bc12b481495e61c8f3ca5682056a2fa7765c
   quantity_liters: '',
   price_baht_per_liter: '',
   amount_baht: '',
@@ -219,7 +226,10 @@ function hasDraftData(data = {}) {
   return Boolean(
     data.plate_no ||
     data.driver_name ||
+<<<<<<< HEAD
     data.actual_filled_liters ||
+=======
+>>>>>>> 2682bc12b481495e61c8f3ca5682056a2fa7765c
     data.quantity_liters ||
     data.amount_baht ||
     data.distance_km ||
@@ -338,7 +348,11 @@ function roundMoneyLike(value, digits = 2) {
   return roundDecimal(value, digits);
 }
 
+<<<<<<< HEAD
 export default function DeliveryForm({ initialData = null, onSaved = null }) {
+=======
+export default function DeliveryForm({ initialData = null, onSaved }) {
+>>>>>>> 2682bc12b481495e61c8f3ca5682056a2fa7765c
   const { user } = useAuth();
   const [form, setForm] = useState(blank);
   const [files, setFiles] = useState({});
@@ -383,11 +397,19 @@ export default function DeliveryForm({ initialData = null, onSaved = null }) {
   }, [effectiveDistance, expectedFuelEfficiency, form.item_type]);
 
   const effectiveLiters = useMemo(() => {
+<<<<<<< HEAD
     // v60: ดีเซลใช้ลิตรเติมจริงเมื่อกรอก หากเว้นว่างจะใช้ลิตรตามมาตรฐานให้อัตโนมัติ
     const actual = Math.max(0, roundMoneyLike(decimalNumber(form.actual_filled_liters || form.quantity_liters, 0), 2));
     if (form.item_type === 'ดีเซล') return actual > 0 ? actual : recommendedFuelLiters;
     return Math.max(0, roundMoneyLike(decimalNumber(form.quantity_liters, 0), 2));
   }, [form.item_type, form.actual_filled_liters, form.quantity_liters, recommendedFuelLiters]);
+=======
+    // ดีเซลใช้จำนวนลิตรที่คำนวณจาก ระยะทาง ÷ อัตราประจำรถ เป็นหลัก
+    // รายการเก่าที่ยังไม่มีระยะทาง และน้ำมันชนิดอื่น ยังคงอ่านค่าจำนวนลิตรเดิมได้
+    if (form.item_type === 'ดีเซล' && recommendedFuelLiters > 0) return recommendedFuelLiters;
+    return Math.max(0, roundMoneyLike(decimalNumber(form.quantity_liters, 0), 2));
+  }, [form.item_type, form.quantity_liters, recommendedFuelLiters]);
+>>>>>>> 2682bc12b481495e61c8f3ca5682056a2fa7765c
 
   const estimatedDistance = useMemo(() => {
     if (form.item_type !== 'ดีเซล') return 0;
@@ -401,6 +423,7 @@ export default function DeliveryForm({ initialData = null, onSaved = null }) {
     return effectiveLiters > 0 && price > 0 ? roundMoneyLike(effectiveLiters * price, 2) : 0;
   }, [effectiveLiters, form.price_baht_per_liter]);
 
+<<<<<<< HEAD
   const standardBillTotal = useMemo(() => {
     const price = decimalNumber(form.price_baht_per_liter, 0);
     const standardLiters = form.item_type === 'ดีเซล' ? recommendedFuelLiters : effectiveLiters;
@@ -414,6 +437,8 @@ export default function DeliveryForm({ initialData = null, onSaved = null }) {
 
   const fuelVarianceBaht = useMemo(() => roundMoneyLike(billTotal - standardBillTotal, 2), [billTotal, standardBillTotal]);
 
+=======
+>>>>>>> 2682bc12b481495e61c8f3ca5682056a2fa7765c
   const avgPrice = useMemo(() => {
     const amount = decimalNumber(form.amount_baht, 0);
     return effectiveLiters > 0 && amount > 0 ? roundMoneyLike(amount / effectiveLiters, 2) : 0;
@@ -454,9 +479,13 @@ export default function DeliveryForm({ initialData = null, onSaved = null }) {
             initialData.fuel_efficiency_km_per_liter ||
             '',
           estimated_distance_km: initialData.estimated_distance_km || '',
+<<<<<<< HEAD
           recommended_fuel_liters: initialData.recommended_fuel_liters || initialData.standard_fuel_liters || '',
           actual_filled_liters: initialData.actual_filled_liters || initialData.quantity_liters || '',
           quantity_liters: initialData.quantity_liters || '',
+=======
+          recommended_fuel_liters: initialData.recommended_fuel_liters || '',
+>>>>>>> 2682bc12b481495e61c8f3ca5682056a2fa7765c
           calculation_mode: initialData.calculation_mode || 'distance_to_liters',
           jobs: jobsFromData(initialData),
         }
@@ -688,11 +717,15 @@ export default function DeliveryForm({ initialData = null, onSaved = null }) {
     fd.set('expected_fuel_efficiency_km_per_liter', expectedFuelEfficiency ? String(expectedFuelEfficiency) : '');
     fd.set('estimated_distance_km', estimatedDistance ? String(estimatedDistance) : '');
     fd.set('recommended_fuel_liters', recommendedFuelLiters ? String(recommendedFuelLiters) : '');
+<<<<<<< HEAD
     fd.set('standard_fuel_liters', form.item_type === 'ดีเซล' ? String(recommendedFuelLiters || effectiveLiters || '') : String(effectiveLiters || ''));
     fd.set('actual_filled_liters', effectiveLiters ? String(effectiveLiters) : '');
     fd.set('fuel_variance_liters', String(fuelVarianceLiters || 0));
     fd.set('fuel_variance_baht', String(fuelVarianceBaht || 0));
     fd.set('calculation_mode', form.item_type === 'ดีเซล' ? 'distance_to_actual_variance' : 'manual_liters');
+=======
+    fd.set('calculation_mode', form.item_type === 'ดีเซล' ? 'distance_to_liters' : 'manual_liters');
+>>>>>>> 2682bc12b481495e61c8f3ca5682056a2fa7765c
     fd.set('nozzle_liters', '');
     fd.set('station_meter_delta_liters', '');
     fd.set('station_liters', effectiveLiters ? String(effectiveLiters) : '');
@@ -750,12 +783,15 @@ export default function DeliveryForm({ initialData = null, onSaved = null }) {
       if (!ok) return;
     }
 
+<<<<<<< HEAD
     if (form.item_type === 'ดีเซล' && recommendedFuelLiters > 0 && Math.abs(fuelVarianceLiters) > Math.max(5, recommendedFuelLiters * 0.1)) {
       const direction = fuelVarianceLiters > 0 ? 'เกิน' : 'ต่ำกว่า';
       const ok = await confirmAction('ตรวจสอบลิตรเติมจริง', `ลิตรเติมจริง ${number(effectiveLiters, 2)} ลิตร ${direction}มาตรฐาน ${number(Math.abs(fuelVarianceLiters), 2)} ลิตร (${money(Math.abs(fuelVarianceBaht))}) ต้องการบันทึกต่อใช่ไหม`);
       if (!ok) return;
     }
 
+=======
+>>>>>>> 2682bc12b481495e61c8f3ca5682056a2fa7765c
     const selectedFileCount = Object.values(files || {}).reduce((sum, list) => sum + (Array.isArray(list) ? list.length : 0), 0);
     setLoading(true);
     try {
@@ -802,7 +838,11 @@ export default function DeliveryForm({ initialData = null, onSaved = null }) {
           <div className="form-hero-summary" aria-label="สรุปข้อมูลที่กรอก">
             <Metric label="ระยะทางรวมทุกงาน" value={effectiveDistance ? `${number(effectiveDistance, 2)} กม.` : '-'} />
             <Metric label="จำนวนงาน" value={`${jobsSummary.count || 0} งาน`} />
+<<<<<<< HEAD
             <Metric label="ลิตรเติมจริง" value={effectiveLiters ? `${number(effectiveLiters, 2)} ลิตร` : '-'} />
+=======
+            <Metric label="ลิตรตามเรท" value={effectiveLiters ? `${number(effectiveLiters, 2)} ลิตร` : '-'} />
+>>>>>>> 2682bc12b481495e61c8f3ca5682056a2fa7765c
             <Metric label="ราคาต่อลิตร" value={decimalNumber(form.price_baht_per_liter, 0) ? `${number(form.price_baht_per_liter, 2)} บาท` : '-'} />
             <Metric label="อัตราประจำรถ" value={expectedFuelEfficiency ? `${number(expectedFuelEfficiency, 2)} กม./ลิตร` : 'ยังไม่ตั้งค่า'} strong />
           </div>
@@ -832,7 +872,11 @@ export default function DeliveryForm({ initialData = null, onSaved = null }) {
               <VehicleLinkedStatus vehicle={selectedVehicle} plate={form.plate_no} driver={form.driver_name} rate={expectedFuelEfficiency} />
             </Section>
 
+<<<<<<< HEAD
             <Section no="2" id="delivery-step-2" icon={Droplets} title="ระยะทาง ลิตรเติมจริง และราคา" subtitle="ระบบคำนวณลิตรมาตรฐานจากระยะทาง แล้วเปรียบเทียบกับลิตรเติมจริงเพื่อวิเคราะห์ค่าใช้จ่าย">
+=======
+            <Section no="2" id="delivery-step-2" icon={Droplets} title="ระยะทาง เรทน้ำมัน และราคา" subtitle="ข้อมูลจากทุกงานจะไหลมารวมในส่วนนี้ และคำนวณลิตรกับยอดเงินทันที">
+>>>>>>> 2682bc12b481495e61c8f3ca5682056a2fa7765c
               {form.item_type === 'ดีเซล' ? (
                 jobsSummary.distance > 0 ? (
                   <ReadOnlyField className="field-featured distance-result-auto" label="ระยะทางรวมจากทุกงาน" hint={`รวมอัตโนมัติจาก ${jobsSummary.count} งาน`} value={`${number(jobsSummary.distance, 2)} กม.`} />
@@ -852,6 +896,7 @@ export default function DeliveryForm({ initialData = null, onSaved = null }) {
               />
               <ReadOnlyField
                 className="field-featured distance-result-auto"
+<<<<<<< HEAD
                 label={form.item_type === 'ดีเซล' ? 'จำนวนลิตรมาตรฐาน' : 'จำนวนลิตร'}
                 hint={form.item_type === 'ดีเซล' ? 'ระยะทาง ÷ อัตราประจำรถ' : 'ใช้จำนวนลิตรที่กรอก'}
                 value={form.item_type === 'ดีเซล'
@@ -877,6 +922,17 @@ export default function DeliveryForm({ initialData = null, onSaved = null }) {
               <Field type="number" step="1" label="หัวจ่ายก่อนเติม" hint="เลขอ้างอิง" value={form.odometer_before} onChange={(v) => setField('odometer_before', v)} />
               <Field type="number" step="1" label="หัวจ่ายหลังเติม" hint="เลขอ้างอิง" value={form.odometer_after} onChange={(v) => setField('odometer_after', v)} />
               <CalcCard billTotal={billTotal} standardBillTotal={standardBillTotal} fuelVarianceLiters={fuelVarianceLiters} fuelVarianceBaht={fuelVarianceBaht} fuelEfficiency={fuelEfficiency} expectedFuelEfficiency={expectedFuelEfficiency} effectiveLiters={effectiveLiters} recommendedFuelLiters={recommendedFuelLiters} effectiveDistance={effectiveDistance} estimatedDistance={estimatedDistance} />
+=======
+                label={form.item_type === 'ดีเซล' ? 'จำนวนลิตรตามเรทน้ำมัน' : 'จำนวนลิตร'}
+                hint={form.item_type === 'ดีเซล' ? 'ระยะทาง ÷ อัตราประจำรถ' : 'ใช้จำนวนลิตรที่กรอก'}
+                value={effectiveLiters ? `${number(effectiveLiters, 2)} ลิตร` : form.item_type === 'ดีเซล' ? 'เลือกทะเบียนรถและกรอกระยะทาง' : 'กรอกจำนวนลิตร'}
+              />
+              <Field required type="number" step="0.01" label="ราคาน้ำมันต่อลิตร" hint="หน่วยบาท" value={form.price_baht_per_liter} onChange={(v) => setField('price_baht_per_liter', v)} suffix="บาท" />
+              <ReadOnlyField label="ยอดรวมตามเรท" hint="จำนวนลิตรตามเรท × ราคาต่อลิตร" value={billTotal ? money(billTotal) : 'รอกรอกระยะทาง เรท และราคา'} />
+              <Field type="number" step="1" label="หัวจ่ายก่อนเติม" hint="เลขอ้างอิง" value={form.odometer_before} onChange={(v) => setField('odometer_before', v)} />
+              <Field type="number" step="1" label="หัวจ่ายหลังเติม" hint="เลขอ้างอิง" value={form.odometer_after} onChange={(v) => setField('odometer_after', v)} />
+              <CalcCard billTotal={billTotal} pricePerLiter={form.price_baht_per_liter} fuelEfficiency={fuelEfficiency} expectedFuelEfficiency={expectedFuelEfficiency} effectiveLiters={effectiveLiters} effectiveDistance={effectiveDistance} estimatedDistance={estimatedDistance} />
+>>>>>>> 2682bc12b481495e61c8f3ca5682056a2fa7765c
             </Section>
 
             <Section no="3" id="delivery-step-3" icon={Clock3} title="วัน เวลา และรายละเอียดงาน" subtitle="กำหนดวันที่หลักครั้งเดียว แล้วนำไปใช้กับงานย่อยได้ทันที">
@@ -1189,13 +1245,18 @@ function Select({ label, value, onChange, options, hint = '', className = '' }) 
   );
 }
 
+<<<<<<< HEAD
 function CalcCard({ billTotal, standardBillTotal, fuelVarianceLiters, fuelVarianceBaht, fuelEfficiency, expectedFuelEfficiency, effectiveLiters, recommendedFuelLiters, effectiveDistance, estimatedDistance }) {
   const varianceTone = fuelVarianceLiters > 0 ? 'text-red-700' : fuelVarianceLiters < 0 ? 'text-emerald-700' : 'text-blue-950';
+=======
+function CalcCard({ billTotal, pricePerLiter, fuelEfficiency, expectedFuelEfficiency, effectiveLiters, effectiveDistance, estimatedDistance }) {
+>>>>>>> 2682bc12b481495e61c8f3ca5682056a2fa7765c
   return (
     <div className="col-span-2 rounded-3xl border border-blue-100 bg-gradient-to-br from-blue-50 to-sky-50 p-4 text-sm font-bold text-blue-950 md:col-span-2 xl:col-span-4">
       <div className="flex items-start gap-3">
         <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-white text-blue-700 shadow-sm"><Gauge size={18} /></div>
         <div className="min-w-0 flex-1">
+<<<<<<< HEAD
           <p className="font-black">วิเคราะห์น้ำมันจริงเทียบมาตรฐาน</p>
           <p className="mt-1 text-xs leading-5 text-blue-800/70">มาตรฐาน = ระยะทาง ÷ อัตราประจำรถ · ค่าใช้จ่ายจริง = ลิตรเติมจริง × ราคาต่อลิตร</p>
           <div className="mt-3 grid grid-cols-2 gap-2 lg:grid-cols-6">
@@ -1207,6 +1268,17 @@ function CalcCard({ billTotal, standardBillTotal, fuelVarianceLiters, fuelVarian
             <MiniCalc label="ประสิทธิภาพจริง" value={fuelEfficiency ? `${number(fuelEfficiency, 2)} กม./ลิตร` : estimatedDistance ? `${number(estimatedDistance, 2)} กม.` : '-'} />
           </div>
           <div className="mt-2 flex flex-wrap gap-2 text-[11px]"><span className="rounded-full bg-white px-3 py-1.5">ค่าใช้จ่ายมาตรฐาน {money(standardBillTotal)}</span><span className="rounded-full bg-white px-3 py-1.5">ค่าใช้จ่ายจริง {money(billTotal)}</span></div>
+=======
+          <p className="font-black">สรุปคำนวณเรทน้ำมันอัตโนมัติ</p>
+          <p className="mt-1 text-xs leading-5 text-blue-800/70">สูตรอัตโนมัติ = ระยะทาง ÷ อัตราประจำรถ (กม./ลิตร)</p>
+          <div className="mt-3 grid grid-cols-2 gap-2 lg:grid-cols-5">
+            <MiniCalc label="ระยะทางที่กรอก" value={effectiveDistance ? `${number(effectiveDistance, 2)} กม.` : '-'} />
+            <MiniCalc label="อัตราประจำรถ" value={expectedFuelEfficiency ? `${number(expectedFuelEfficiency, 2)} กม./ลิตร` : 'ยังไม่ตั้งค่า'} strong />
+            <MiniCalc label="ลิตรตามเรท" value={effectiveLiters ? `${number(effectiveLiters, 2)} ลิตร` : '-'} strong highlight />
+            <MiniCalc label="จำนวนบาท" value={billTotal ? money(billTotal) : '-'} />
+            <MiniCalc label="ตรวจสูตร" value={fuelEfficiency ? `${number(fuelEfficiency, 2)} กม./ลิตร` : estimatedDistance ? `${number(estimatedDistance, 2)} กม.` : '-'} />
+          </div>
+>>>>>>> 2682bc12b481495e61c8f3ca5682056a2fa7765c
         </div>
       </div>
     </div>

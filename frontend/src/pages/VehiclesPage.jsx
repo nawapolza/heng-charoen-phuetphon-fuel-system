@@ -196,7 +196,11 @@ function LinkStatus({ active }) {
   return <span className={active ? 'is-ready' : ''}>{active ? 'เชื่อมพร้อมใช้งาน' : 'รอกรอกข้อมูลหลัก'}</span>;
 }
 
+<<<<<<< HEAD
 function Field({ label, value, onChange, required = false, hint = '', type = 'text', step = undefined }) {
+=======
+function Field({ label, value, onChange, required = false, hint = '', type = 'text', step }) {
+>>>>>>> 2682bc12b481495e61c8f3ca5682056a2fa7765c
   return (
     <label className="block">
       <span className="label">{label}{required && <span className="text-red-500"> *</span>}</span>

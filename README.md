@@ -2,6 +2,7 @@
 
 ระบบจัดการน้ำมัน รถ คนขับ สต๊อก พนักงาน และรายการย้อนหลัง ออกแบบใหม่ทั้งโครงสร้างหน้าจอ โดยยังใช้ API และความสามารถเดิมครบถ้วน
 
+<<<<<<< HEAD
 ## V60 — ระบบคำนวณ สต๊อก Realtime และรายงานบัญชีในเว็บเดียว
 
 - ไม่มีหน้าแนะนำบริษัท
@@ -17,6 +18,8 @@
 รายละเอียดฐานข้อมูล: `MONGODB_CHANGES_V60.md`  
 รายละเอียดรุ่น: `RELEASE_NOTES_V60.md`
 
+=======
+>>>>>>> 2682bc12b481495e61c8f3ca5682056a2fa7765c
 ## จุดเด่นของชุดนี้
 
 - ใช้ Route Rail บนคอมพิวเตอร์ และ Bottom Navigation บนมือถือ
@@ -36,8 +39,11 @@ npm run dev:frontend
 
 ตั้งค่าไฟล์ `.env` ตามตัวอย่างใน `backend/.env.example` และ `frontend/.env.example`
 
+<<<<<<< HEAD
 บน Windows สามารถใช้ `INSTALL_WINDOWS.bat` เพื่อติดตั้ง และ `START_LOCAL_WINDOWS.bat` เพื่อเปิด Backend/Frontend สองหน้าต่างได้
 
+=======
+>>>>>>> 2682bc12b481495e61c8f3ca5682056a2fa7765c
 ## Build Frontend
 
 ```bash

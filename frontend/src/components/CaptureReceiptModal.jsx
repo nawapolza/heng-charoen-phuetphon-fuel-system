@@ -29,8 +29,12 @@ function isPdf(path = '') {
 
 function litersValue(row) {
   return roundDecimal(
+<<<<<<< HEAD
     row?.actual_filled_liters
       || row?.quantity_liters
+=======
+    row?.quantity_liters
+>>>>>>> 2682bc12b481495e61c8f3ca5682056a2fa7765c
       || row?.station_liters
       || row?.liters
       || row?.nozzle_liters
@@ -40,6 +44,7 @@ function litersValue(row) {
   );
 }
 
+<<<<<<< HEAD
 function standardLitersValue(row) {
   return roundDecimal(row?.standard_fuel_liters || row?.recommended_fuel_liters || row?.quantity_liters || 0, 2);
 }
@@ -49,6 +54,8 @@ function varianceLitersValue(row) {
   return roundDecimal(litersValue(row) - standardLitersValue(row), 2);
 }
 
+=======
+>>>>>>> 2682bc12b481495e61c8f3ca5682056a2fa7765c
 function efficiencyValue(row) {
   const saved = parseDecimal(row?.fuel_efficiency_km_per_liter, 0);
   if (saved > 0) return saved;
@@ -193,8 +200,11 @@ export default function CaptureReceiptModal({ row, onClose }) {
 
   const fillDateText = `${date(row.fill_date || row.work_date)}${row.fill_time ? ` เวลา ${row.fill_time}` : ''}`;
   const liters = litersValue(row);
+<<<<<<< HEAD
   const standardLiters = standardLitersValue(row);
   const varianceLiters = varianceLitersValue(row);
+=======
+>>>>>>> 2682bc12b481495e61c8f3ca5682056a2fa7765c
   const distance = parseDecimal(row.distance_km, 0);
   const fuelRate = efficiencyValue(row);
   const before = hasValue(row?.station_meter_before) ? row.station_meter_before : row?.odometer_before;
@@ -377,7 +387,11 @@ export default function CaptureReceiptModal({ row, onClose }) {
                     <div className="mt-1.5 grid grid-cols-4 gap-1.5">
                       <CompactMetric label="จำนวนงาน" value={`${jobs.length} งาน`} />
                       <CompactMetric label="ระยะทาง" value={distance ? `${number(distance, 0)} กม.` : '-'} />
+<<<<<<< HEAD
                       <CompactMetric label="ลิตรเติมจริง" value={liters ? `${number(liters, 2)} ลิตร` : '-'} />
+=======
+                      <CompactMetric label="จำนวนลิตร" value={liters ? `${number(liters, 2)} ลิตร` : '-'} />
+>>>>>>> 2682bc12b481495e61c8f3ca5682056a2fa7765c
                       <CompactMetric label="ยอดเงิน" value={money(displayAmountValue(row))} />
                     </div>
                   </div>
@@ -402,10 +416,15 @@ export default function CaptureReceiptModal({ row, onClose }) {
                   <div className="grid grid-cols-2 gap-1.5 sm:gap-2">
                     <CaptureBox label="วันที่/เวลาเติม" value={fillDateText} />
                     <CaptureBox label="จำนวนงาน" value={`${jobs.length} งาน`} />
+<<<<<<< HEAD
                     <CaptureBox label="ลิตรเติมจริง" value={liters ? `${number(liters, 2)} ลิตร` : '-'} tone="blue" />
                     <CaptureBox label="ลิตรมาตรฐาน" value={`${number(standardLiters, 2)} ลิตร`} tone="blue" />
                     <CaptureBox label="ส่วนต่าง" value={`${varianceLiters > 0 ? '+' : ''}${number(varianceLiters, 2)} ลิตร`} tone={varianceLiters > 0 ? 'red' : 'green'} />
                     <CaptureBox label="ค่าใช้จ่ายเติมจริง" value={money(displayAmountValue(row))} tone="blue" />
+=======
+                    <CaptureBox label="จำนวนลิตรตามเรท" value={liters ? `${number(liters, 2)} ลิตร` : '-'} tone="blue" />
+                    <CaptureBox label="ยอดเงินตามเรท" value={money(displayAmountValue(row))} tone="blue" />
+>>>>>>> 2682bc12b481495e61c8f3ca5682056a2fa7765c
                     <CaptureBox label="ราคาน้ำมันลิตรละ" value={priceText(row)} tone="blue" />
                     <CaptureBox label="ระยะทางที่กรอก" value={distance ? `${number(distance, 2)} กม.` : '-'} />
                     <CaptureBox label="อัตราประจำรถ" value={fuelRate ? `${number(fuelRate, 2)} กม./ลิตร` : '-'} tone="blue" />
@@ -415,7 +434,11 @@ export default function CaptureReceiptModal({ row, onClose }) {
                     <div className="grid grid-cols-2 gap-1.5">
                       <MiniCheck icon={Gauge} label="หัวจ่ายก่อน" value={meterText(before)} />
                       <MiniCheck icon={Gauge} label="หัวจ่ายหลัง" value={meterText(after)} />
+<<<<<<< HEAD
                       <MiniCheck icon={Route} label="จริง / มาตรฐาน" value={liters ? `${number(liters, 2)} / ${number(standardLiters, 2)} ลิตร` : '-'} />
+=======
+                      <MiniCheck icon={Route} label="จำนวนลิตรตามเรท" value={liters ? `${number(liters, 2)} ลิตร` : '-'} />
+>>>>>>> 2682bc12b481495e61c8f3ca5682056a2fa7765c
                       <MiniCheck icon={Camera} label="รูปแนบ" value={`${photos.length} ไฟล์`} />
                     </div>
                   </div>
@@ -532,12 +555,18 @@ function CompactMetric({ label, value }) {
 }
 
 function CaptureBox({ label, value, tone = 'slate' }) {
+<<<<<<< HEAD
   const classes = {
     blue: 'border-blue-100 bg-blue-50 text-blue-950',
     green: 'border-emerald-100 bg-emerald-50 text-emerald-950',
     red: 'border-rose-200 bg-rose-50 text-rose-950',
     slate: 'border-slate-100 bg-slate-50 text-slate-950',
   }[tone] || 'border-slate-100 bg-slate-50 text-slate-950';
+=======
+  const classes = tone === 'blue'
+    ? 'border-blue-100 bg-blue-50 text-blue-950'
+    : 'border-slate-100 bg-slate-50 text-slate-950';
+>>>>>>> 2682bc12b481495e61c8f3ca5682056a2fa7765c
   return (
     <div className={`rounded-xl border p-2 sm:rounded-2xl sm:p-3 ${classes}`}>
       <p className="text-[9px] font-black text-slate-400 sm:text-[11px]">{label}</p>
