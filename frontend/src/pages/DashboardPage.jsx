@@ -23,26 +23,16 @@ import { alertError, toastInfo } from '../utils/alerts.js';
 import { date, datetime, money, number, today } from '../utils/format.js';
 
 function startOfMonth() {
- HEAD
   return `${today().slice(0, 7)}-01`;
-=======
-  const d = new Date();
-  d.setDate(1);
-  return d.toISOString().slice(0, 10);
->>>>>>> 2682bc12b481495e61c8f3ca5682056a2fa7765c
 }
 
 function sevenDaysAgo() {
   const d = new Date();
   d.setDate(d.getDate() - 6);
- HEAD
   const year = d.getFullYear();
   const month = String(d.getMonth() + 1).padStart(2, '0');
   const day = String(d.getDate()).padStart(2, '0');
   return `${year}-${month}-${day}`;
-=======
-  return d.toISOString().slice(0, 10);
->>>>>>> 2682bc12b481495e61c8f3ca5682056a2fa7765c
 }
 
 export default function DashboardPage({ setPage }) {
@@ -134,18 +124,11 @@ export default function DashboardPage({ setPage }) {
 
       <section className="dashboard-metrics">
         <Metric icon={ClipboardList} label="งานทั้งหมด" value={number(data?.total_trips)} unit="งาน" helper={`รวมจาก ${number(data?.total_records)} รายการรถ`} />
- HEAD
         <Metric icon={Droplets} label="น้ำมันเติมจริง" value={number(data?.total_liters, 2)} unit="ลิตร" helper={`มาตรฐาน ${number(data?.total_standard_liters, 2)} ลิตร`} />
         <Metric icon={WalletCards} label="ค่าใช้จ่ายรวม" value={money(data?.total_amount)} helper={`เฉลี่ย ${number(data?.avg_price_per_liter, 2)} บาท/ลิตร`} />
         <Metric icon={Route} label="ระยะทางรวม" value={number(data?.total_distance_km, 2)} unit="กม." helper="รวมระยะทางที่บันทึก" />
         <Metric icon={Gauge} label="อัตราเฉลี่ย" value={number(data?.avg_fuel_efficiency_km_per_liter, 2)} unit="กม./ลิตร" helper={`ต้นทุน ${number(data?.cost_per_km, 2)} บาท/กม.`} />
         <Metric icon={AlertTriangle} label="ใช้เกินมาตรฐาน" value={number(data?.over_standard_liters, 2)} unit="ลิตร" helper={`มูลค่า ${money(data?.over_standard_cost_baht)}`} tone={Number(data?.over_standard_liters || 0) > 0 ? 'danger' : 'blue'} />
-=======
-        <Metric icon={Droplets} label="น้ำมันรวม" value={number(data?.total_liters, 2)} unit="ลิตร" helper="ตามจำนวนในบิล" />
-        <Metric icon={WalletCards} label="ค่าใช้จ่ายรวม" value={money(data?.total_amount)} helper={`เฉลี่ย ${number(data?.avg_price_per_liter, 2)} บาท/ลิตร`} />
-        <Metric icon={Route} label="ระยะทางรวม" value={number(data?.total_distance_km, 2)} unit="กม." helper="รวมระยะทางที่บันทึก" />
-        <Metric icon={Gauge} label="อัตราเฉลี่ย" value={number(data?.avg_fuel_efficiency_km_per_liter, 2)} unit="กม./ลิตร" helper="ประสิทธิภาพการวิ่ง" />
->>>>>>> 2682bc12b481495e61c8f3ca5682056a2fa7765c
       </section>
 
       <section className="dashboard-grid-main">
@@ -162,15 +145,10 @@ export default function DashboardPage({ setPage }) {
       <section className="dashboard-stock-grid">
         {(data?.stocks || []).map((stock) => {
           const balance = Number(stock.balance_liters || 0);
- HEAD
           const status = stock.level_status || 'ready';
           const state = stock.level_label || (status === 'critical' ? 'วิกฤต' : status === 'low' ? 'ควรเตรียมเติม' : 'พร้อมให้บริการ');
           const tone = status === 'critical' ? 'danger' : status === 'low' ? 'warning' : 'normal';
           const percent = Number(stock.available_percent || 0);
-=======
-          const state = balance < 100 ? 'ต่ำมาก' : balance < 300 ? 'ควรเตรียมเติม' : 'ปกติ';
-          const tone = balance < 100 ? 'danger' : balance < 300 ? 'warning' : 'normal';
->>>>>>> 2682bc12b481495e61c8f3ca5682056a2fa7765c
           return (
             <div key={stock.item_type} className={`card-clean stock-summary-card is-${tone}`}>
               <div className="stock-summary-top">
@@ -180,13 +158,8 @@ export default function DashboardPage({ setPage }) {
                 </div>
                 <span><Boxes size={22} /></span>
               </div>
- HEAD
               <div className="stock-progress"><i style={{ width: `${Math.max(balance > 0 ? 4 : 0, Math.min(100, percent))}%` }} /></div>
               <div className="stock-summary-foot"><span>{state} · {number(percent, 0)}%</span><small>{stock.tank_name || 'ถังหลัก'} / {number(stock.capacity_liters, 0)} ลิตร</small></div>
-=======
-              <div className="stock-progress"><i style={{ width: `${Math.max(8, Math.min(100, balance / 10))}%` }} /></div>
-              <div className="stock-summary-foot"><span>{state}</span><small>อัปเดต {datetime(stock.updated_at)}</small></div>
->>>>>>> 2682bc12b481495e61c8f3ca5682056a2fa7765c
             </div>
           );
         })}

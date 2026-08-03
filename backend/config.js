@@ -20,10 +20,7 @@ module.exports = {
   uploadMaxMb: Number(envValue('UPLOAD_MAX_MB', '200')),
   uploadDbMaxMb: Number(envValue('UPLOAD_DB_MAX_MB', '10')),
   port: Number(envValue('PORT', '3000')),
- HEAD
   timezone: envValue('APP_TIMEZONE', 'Asia/Bangkok'),
-=======
->>>>>>> 2682bc12b481495e61c8f3ca5682056a2fa7765c
   corsAllowAll: envValue('CORS_ALLOW_ALL', 'true') === 'true',
   corsAllowedOrigins: allowedOrigins,
 };

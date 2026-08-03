@@ -3,7 +3,7 @@ const path = require('path');
 
 const root = path.resolve(__dirname, '..');
 const ignoredDirectories = new Set(['.git', 'node_modules', 'dist', 'build']);
-const conflictPattern = /^((?: .*)?|=======|>>>>>>>(?: .*)?)$/m;
+const conflictPattern = /^(<<<<<<<(?: .*)?|=======|>>>>>>>(?: .*)?)$/m;
 const conflicts = [];
 
 function walk(directory) {

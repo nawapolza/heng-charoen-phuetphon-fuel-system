@@ -26,7 +26,6 @@ export const FIELD_LABELS = {
   total_income_baht: 'รวมรายได้',
   wage_payer: 'ผู้จ่ายค่าแรง',
   payment_status: 'สถานะรายได้',
-<<<<<<< HEAD
   quantity_liters: 'จำนวนลิตรเติมจริง',
   actual_filled_liters: 'จำนวนลิตรเติมจริง',
   standard_fuel_liters: 'จำนวนลิตรมาตรฐาน',
@@ -35,11 +34,6 @@ export const FIELD_LABELS = {
   fuel_variance_baht: 'มูลค่าส่วนต่างน้ำมัน',
   cost_per_km: 'ต้นทุนต่อกิโลเมตร',
   amount_baht: 'ค่าใช้จ่ายเติมจริง',
-=======
-  quantity_liters: 'จำนวนลิตรตามเรท',
-  recommended_fuel_liters: 'จำนวนลิตรที่คำนวณจากระยะทาง',
-  amount_baht: 'ยอดเงินตามเรท',
->>>>>>> 2682bc12b481495e61c8f3ca5682056a2fa7765c
   distance_km: 'ระยะทางที่กรอก',
   odometer_before: 'เลขหัวจ่ายก่อนเติม (อ้างอิง)',
   odometer_after: 'เลขหัวจ่ายหลังเติม (อ้างอิง)',
@@ -169,15 +163,11 @@ export function datetime(value) {
 }
 
 export function today() {
-<<<<<<< HEAD
   const d = new Date();
   const year = d.getFullYear();
   const month = String(d.getMonth() + 1).padStart(2, '0');
   const day = String(d.getDate()).padStart(2, '0');
   return `${year}-${month}-${day}`;
-=======
-  return new Date().toISOString().slice(0, 10);
->>>>>>> 2682bc12b481495e61c8f3ca5682056a2fa7765c
 }
 
 export function currentTime() {

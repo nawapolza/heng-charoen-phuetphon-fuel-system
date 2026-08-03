@@ -48,7 +48,6 @@ function distanceValue(row) {
 }
 
 function litersValue(row) {
-<<<<<<< HEAD
   return round2(row?.actual_filled_liters || row?.quantity_liters || row?.station_liters || row?.liters || row?.nozzle_liters || row?.station_meter_delta_liters || 0);
 }
 
@@ -59,9 +58,6 @@ function standardLitersValue(row) {
 function varianceLitersValue(row) {
   if (hasValue(row?.fuel_variance_liters)) return round2(row.fuel_variance_liters);
   return round2(litersValue(row) - standardLitersValue(row));
-=======
-  return round2(row?.quantity_liters || row?.station_liters || row?.liters || row?.nozzle_liters || row?.station_meter_delta_liters || 0);
->>>>>>> 2682bc12b481495e61c8f3ca5682056a2fa7765c
 }
 
 function meterText(value) {
@@ -181,14 +177,11 @@ export default function DeliveryReceiptCard({ row, onEdit, onDelete }) {
   const expectedRate = expectedEfficiency(row);
   const estimatedDistance = estimatedDistanceValue(row);
   const liters = litersValue(row);
-<<<<<<< HEAD
   const standardLiters = standardLitersValue(row);
   const varianceLiters = varianceLitersValue(row);
   const varianceBaht = hasValue(row?.fuel_variance_baht)
     ? round2(row.fuel_variance_baht)
     : round2(varianceLiters * parseDecimal(row?.price_baht_per_liter || row?.price_per_liter, 0));
-=======
->>>>>>> 2682bc12b481495e61c8f3ca5682056a2fa7765c
   const jobs = jobsFor(row);
   const tripFee = roundDecimal(jobs.reduce((sum, job) => sum + incomeValue(job, 'trip_fee_baht'), 0), 2) || incomeValue(row, 'trip_fee_baht');
   const allowance = roundDecimal(jobs.reduce((sum, job) => sum + incomeValue(job, 'allowance_baht'), 0), 2) || incomeValue(row, 'allowance_baht');
@@ -288,15 +281,10 @@ export default function DeliveryReceiptCard({ row, onEdit, onDelete }) {
           <SummaryInfo label="จำนวนงาน" value={`${jobs.length} งาน`} tone="dark" />
           <SummaryInfo label="คนขับ" value={row.driver_name || row.driver_name_input || '-'} />
           <SummaryInfo label="วันที่/เวลาเติม" value={fillDateText} />
-<<<<<<< HEAD
           <SummaryInfo label="ลิตรเติมจริง" value={`${number(liters, 2)} ลิตร`} tone="blue" />
           <SummaryInfo label="ลิตรมาตรฐานตามระยะทาง" value={`${number(standardLiters, 2)} ลิตร`} tone="blue" />
           <SummaryInfo label="ส่วนต่างการใช้น้ำมัน" value={`${varianceLiters > 0 ? '+' : ''}${number(varianceLiters, 2)} ลิตร / ${money(varianceBaht)}`} tone={varianceLiters > 0 ? 'danger' : 'green'} />
           <SummaryInfo label="ค่าใช้จ่ายเติมจริง" value={money(displayAmountValue(row))} tone="blue" />
-=======
-          <SummaryInfo label="จำนวนลิตรตามเรท" value={`${number(liters, 2)} ลิตร`} tone="blue" />
-          <SummaryInfo label="ยอดเงินตามเรท" value={money(displayAmountValue(row))} tone="blue" />
->>>>>>> 2682bc12b481495e61c8f3ca5682056a2fa7765c
           <SummaryInfo label="ราคาน้ำมันลิตรละ (บาท)" value={priceText(row)} tone="blue" />
           <SummaryInfo label="อัตราประจำรถที่ใช้คำนวณ" value={expectedRate ? `${number(expectedRate, 2)} กม./ลิตร` : '-'} tone="blue" />
           <SummaryInfo label="ระยะทางที่กรอก" value={distance ? `${number(distance, 2)} กม.` : '-'} tone="blue" />
@@ -308,11 +296,7 @@ export default function DeliveryReceiptCard({ row, onEdit, onDelete }) {
             <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
               <MiniLine icon={Route} label="ระยะทางที่กรอก" value={distance ? `${number(distance, 2)} กม.` : '-'} />
               <MiniLine icon={Gauge} label="ราคาน้ำมันลิตรละ (บาท)" value={priceText(row)} />
-<<<<<<< HEAD
               <MiniLine icon={Gauge} label="ลิตรจริง / มาตรฐาน" value={liters ? `${number(liters, 2)} / ${number(standardLiters, 2)} ลิตร` : '-'} />
-=======
-              <MiniLine icon={Gauge} label="จำนวนลิตรตามเรท" value={liters ? `${number(liters, 2)} ลิตร` : '-'} />
->>>>>>> 2682bc12b481495e61c8f3ca5682056a2fa7765c
               <MiniLine icon={Camera} label="รูปแนบ" value={`${allPhotos.length} ไฟล์`} />
             </div>
             <div className="flex shrink-0 gap-2 overflow-x-auto pb-1 md:max-w-[260px]">
@@ -445,12 +429,8 @@ function SummaryInfo({ label, value, tone = 'slate' }) {
   const cls = {
     slate: 'border-slate-100 bg-slate-50 text-slate-900',
     blue: 'border-blue-100 bg-blue-50 text-blue-950',
-<<<<<<< HEAD
     green: 'border-emerald-100 bg-emerald-50 text-emerald-950',
     danger: 'border-rose-200 bg-rose-50 text-rose-950',
-=======
-    blue: 'border-blue-100 bg-blue-50 text-blue-950',
->>>>>>> 2682bc12b481495e61c8f3ca5682056a2fa7765c
     dark: 'border-slate-200 bg-slate-950 text-white',
   }[tone] || 'border-slate-100 bg-slate-50 text-slate-900';
   return (

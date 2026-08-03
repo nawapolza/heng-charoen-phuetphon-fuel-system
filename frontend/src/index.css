@@ -5682,7 +5682,6 @@ body {
 @media (max-width: 430px) {
   .stock-history-row { grid-template-columns: 1fr !important; }
 }
- HEAD
 
 /* =========================================================
    V60 - Integrated fuel calculator, realtime stock and reports
@@ -6010,5 +6009,3 @@ body {
   .monthly-audit-table th,
   .monthly-audit-table td { padding: 5px; font-size: 8px; white-space: normal; }
 }
-=======
->>>>>>> 2682bc12b481495e61c8f3ca5682056a2fa7765c

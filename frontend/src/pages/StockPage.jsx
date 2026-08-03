@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 import {
   AlertTriangle,
   Camera,
@@ -14,9 +13,6 @@ import {
   SlidersHorizontal,
   X,
 } from 'lucide-react';
-=======
-import { Camera, FileText, History, PackagePlus, Plus, SlidersHorizontal, X } from 'lucide-react';
->>>>>>> 2682bc12b481495e61c8f3ca5682056a2fa7765c
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { api, uploadUrl } from '../api.js';
 import Loading from '../components/Loading.jsx';
@@ -26,15 +22,11 @@ import { date, datetime, ITEM_TYPES, money, number, today } from '../utils/forma
 
 const blankAdd = { item_type: 'ดีเซล', transaction_date: today(), quantity_liters: '', amount_baht: '', bill_no: '', supplier_name: '', note: '' };
 const blankAdjust = { item_type: 'ดีเซล', transaction_date: today(), change_liters: '', note: '' };
-<<<<<<< HEAD
 const blankAudit = { item_type: 'ดีเซล', audit_date: today(), actual_balance_liters: '', note: '' };
-=======
->>>>>>> 2682bc12b481495e61c8f3ca5682056a2fa7765c
 
 export default function StockPage() {
   const [stocks, setStocks] = useState([]);
   const [transactions, setTransactions] = useState([]);
-<<<<<<< HEAD
   const [audits, setAudits] = useState([]);
   const [loading, setLoading] = useState(true);
   const [form, setForm] = useState(blankAdd);
@@ -43,19 +35,12 @@ export default function StockPage() {
   const [settings, setSettings] = useState({});
   const [file, setFile] = useState(null);
 
-=======
-  const [loading, setLoading] = useState(true);
-  const [form, setForm] = useState(blankAdd);
-  const [adjust, setAdjust] = useState(blankAdjust);
-  const [file, setFile] = useState(null);
->>>>>>> 2682bc12b481495e61c8f3ca5682056a2fa7765c
   const averagePrice = useMemo(() => {
     const liters = Number(String(form.quantity_liters || '').replace(',', '.'));
     const amount = Number(String(form.amount_baht || '').replace(',', '.'));
     return liters > 0 && amount > 0 ? amount / liters : 0;
   }, [form.quantity_liters, form.amount_baht]);
 
-<<<<<<< HEAD
   const auditPreview = useMemo(() => {
     const stock = stocks.find((item) => item.item_type === audit.item_type);
     const system = Number(stock?.balance_liters || 0);
@@ -78,14 +63,6 @@ export default function StockPage() {
         reorder_level_liters: stock.reorder_level_liters || '',
         critical_level_liters: stock.critical_level_liters || '',
       }])));
-=======
-  const load = useCallback(async (silent = false) => {
-    if (!silent) setLoading(true);
-    try {
-      const [stockRes, txRes] = await Promise.all([api.stocks(), api.stockTransactions()]);
-      setStocks(stockRes.data || []);
-      setTransactions(txRes.data || []);
->>>>>>> 2682bc12b481495e61c8f3ca5682056a2fa7765c
     } catch (err) {
       alertError(err, 'โหลดสต๊อกไม่ได้');
     } finally {
@@ -94,11 +71,7 @@ export default function StockPage() {
   }, []);
 
   useRealtime((payload) => {
-<<<<<<< HEAD
     if (['stocks', 'dashboard', 'reports'].includes(payload?.kind)) load(true);
-=======
-    if (payload?.kind === 'stocks' || payload?.kind === 'dashboard') load(true);
->>>>>>> 2682bc12b481495e61c8f3ca5682056a2fa7765c
   }, true);
 
   useEffect(() => { load(); }, [load]);
@@ -121,11 +94,7 @@ export default function StockPage() {
 
   async function submitAdjust(e) {
     e.preventDefault();
-<<<<<<< HEAD
     const ok = await confirmAction('ยืนยันปรับสต๊อก?', 'ใช้เฉพาะกรณีต้องเพิ่มหรือลดยอดโดยตรง การตรวจนับจริงควรใช้แบบฟอร์มตรวจนับ');
-=======
-    const ok = await confirmAction('ยืนยันปรับสต๊อก?', 'ใช้เฉพาะกรณีตรวจนับจริงแล้วตัวเลขไม่ตรง');
->>>>>>> 2682bc12b481495e61c8f3ca5682056a2fa7765c
     if (!ok) return;
     try {
       await api.adjustStock(adjust);
@@ -137,7 +106,6 @@ export default function StockPage() {
     }
   }
 
-<<<<<<< HEAD
   async function submitAudit(e) {
     e.preventDefault();
     const ok = await confirmAction('ยืนยันยอดตรวจนับจริง?', `ระบบจะปรับยอด ${audit.item_type} จาก ${number(auditPreview.system, 2)} เป็น ${number(auditPreview.actual, 2)} ลิตร และบันทึกส่วนต่างไว้ในรายงานบัญชี`);
@@ -200,67 +168,21 @@ export default function StockPage() {
           <div className="module-banner">
             <h2 className="flex items-center gap-2 text-xl font-black"><PackagePlus size={22} /> เติมน้ำมันเข้าคลัง</h2>
             <p className="mt-1 text-sm font-bold text-blue-50">บันทึกลิตร ยอดเงิน บิล และหลักฐาน ระบบอัปเดตทุกหน้าทันที</p>
-=======
-  if (loading) return <Loading />;
-
-  return (
-    <div className="page-shell">
-      <div className="page-orbit">
-        <span className="page-orbit-code">03 / STOCK MANAGEMENT</span>
-        <div>
-          <h1 className="page-title">คลังน้ำมันและสต๊อก</h1>
-          <p className="page-subtitle">ควบคุมยอดคงเหลือ เติมคลัง และตรวจสอบทุกการเคลื่อนไหวจากศูนย์กลางเดียว</p>
-        </div>
-        <span className="page-orbit-signal">LIVE STOCK</span>
-      </div>
-
-      <div className="grid gap-4 lg:grid-cols-3">
-        {stocks.map((stock) => (
-          <div key={stock.item_type} className="card p-5">
-            <p className="text-sm font-black text-slate-500">คงเหลือ {stock.item_type}</p>
-            <p className="mt-2 text-4xl font-black text-slate-950">{number(stock.balance_liters, 2)}</p>
-            <p className="text-sm font-bold text-slate-400">ลิตร</p>
-            <p className="mt-4 text-xs font-bold text-slate-400">อัปเดต {datetime(stock.updated_at)}</p>
-          </div>
-        ))}
-      </div>
-
-      <div className="grid gap-4 xl:grid-cols-[1fr_.8fr]">
-        <form onSubmit={submitAdd} className="card overflow-hidden">
-          <div className="module-banner">
-            <h2 className="flex items-center gap-2 text-xl font-black"><PackagePlus size={22} /> เติมน้ำมันเข้าระบบ</h2>
-            <p className="mt-1 text-sm font-bold text-blue-50">ดีเซล / น้ำมันเครื่อง / แอดบลู</p>
->>>>>>> 2682bc12b481495e61c8f3ca5682056a2fa7765c
           </div>
           <div className="grid gap-3 p-4 md:grid-cols-2 md:p-5">
             <Select label="ประเภทน้ำมัน" value={form.item_type} onChange={(v) => setForm({ ...form, item_type: v })} />
             <Field type="date" label="วันที่เติม" value={form.transaction_date} onChange={(v) => setForm({ ...form, transaction_date: v })} />
             <Field required type="number" label="จำนวนลิตรที่เติมเข้าสต๊อก" value={form.quantity_liters} onChange={(v) => setForm({ ...form, quantity_liters: v })} suffix="ลิตร" />
             <Field type="number" label="จำนวนเงิน" value={form.amount_baht} onChange={(v) => setForm({ ...form, amount_baht: v })} suffix="บาท" />
-<<<<<<< HEAD
             <div className="stock-linked-summary md:col-span-2"><span>ราคาเฉลี่ยจากลิตรและยอดเงิน</span><strong>{averagePrice > 0 ? `${number(averagePrice, 2)} บาท/ลิตร` : 'กรอกลิตรและยอดเงินเพื่อคำนวณ'}</strong></div>
             <Field label="เลขบิล" value={form.bill_no} onChange={(v) => setForm({ ...form, bill_no: v })} />
             <Field label="ผู้จำหน่าย / ร้าน" value={form.supplier_name} onChange={(v) => setForm({ ...form, supplier_name: v })} />
             <StockFilePicker file={file} setFile={setFile} />
             <label className="block md:col-span-2"><span className="label">หมายเหตุ</span><textarea className="input mt-1 min-h-[90px]" value={form.note} onChange={(e) => setForm({ ...form, note: e.target.value })} /></label>
-=======
-            <div className="stock-linked-summary md:col-span-2">
-              <span>ระบบเชื่อมจำนวนลิตรกับยอดเงินแล้ว</span>
-              <strong>{averagePrice > 0 ? `${number(averagePrice, 2)} บาท/ลิตร` : 'กรอกลิตรและยอดเงินเพื่อดูราคาเฉลี่ย'}</strong>
-            </div>
-            <Field label="เลขบิล" value={form.bill_no} onChange={(v) => setForm({ ...form, bill_no: v })} />
-            <Field label="ผู้จำหน่าย / ร้าน" value={form.supplier_name} onChange={(v) => setForm({ ...form, supplier_name: v })} />
-            <StockFilePicker file={file} setFile={setFile} />
-            <label className="block md:col-span-2">
-              <span className="label">หมายเหตุ</span>
-              <textarea className="input mt-1 min-h-[90px]" value={form.note} onChange={(e) => setForm({ ...form, note: e.target.value })} />
-            </label>
->>>>>>> 2682bc12b481495e61c8f3ca5682056a2fa7765c
             <button className="btn-primary md:col-span-2"><Plus size={18} /> บันทึกเติมสต๊อก</button>
           </div>
         </form>
 
-<<<<<<< HEAD
         <form onSubmit={submitAudit} className="card stock-audit-form">
           <div className="stock-audit-head"><span><ClipboardCheck size={22} /></span><div><h2>ตรวจนับสต๊อกจริง</h2><p>กรอกยอดจากการวัดจริง ระบบคำนวณขาด/เกินและส่งเข้าใบสรุปรายเดือน</p></div></div>
           <div className="grid gap-3 p-5">
@@ -271,25 +193,10 @@ export default function StockPage() {
             <div className={`stock-audit-variance ${Number(auditPreview.variance || 0) < 0 ? 'is-short' : 'is-surplus'}`}><span>ส่วนต่าง</span><strong>{auditPreview.variance === null ? '-' : `${auditPreview.variance > 0 ? '+' : ''}${number(auditPreview.variance, 2)} ลิตร`}</strong></div>
             <label className="block"><span className="label">หมายเหตุ / สาเหตุ</span><textarea required className="input mt-1 min-h-[90px]" value={audit.note} onChange={(e) => setAudit({ ...audit, note: e.target.value })} placeholder="เช่น ตรวจวัดสิ้นเดือน หรือพบการรั่วซึม" /></label>
             <button className="btn-dark"><ClipboardCheck size={18} /> บันทึกยอดตรวจจริง</button>
-=======
-        <form onSubmit={submitAdjust} className="card p-5">
-          <h2 className="flex items-center gap-2 text-xl font-black"><SlidersHorizontal size={22} /> ปรับแก้ไขยอดสต๊อก</h2>
-          <p className="mt-1 text-sm font-bold text-slate-400">กรอกบวกเพื่อเพิ่ม เช่น 50 หรือกรอกลบเพื่อลด เช่น -50</p>
-          <div className="mt-4 grid gap-3">
-            <Select label="ประเภทน้ำมัน" value={adjust.item_type} onChange={(v) => setAdjust({ ...adjust, item_type: v })} />
-            <Field type="date" label="วันที่ปรับ" value={adjust.transaction_date} onChange={(v) => setAdjust({ ...adjust, transaction_date: v })} />
-            <Field required type="number" label="จำนวนปรับสต๊อก" value={adjust.change_liters} onChange={(v) => setAdjust({ ...adjust, change_liters: v })} suffix="ลิตร" />
-            <label className="block">
-              <span className="label">เหตุผลในการปรับ</span>
-              <textarea className="input mt-1 min-h-[100px]" value={adjust.note} onChange={(e) => setAdjust({ ...adjust, note: e.target.value })} required />
-            </label>
-            <button className="btn-dark">ยืนยันปรับสต๊อก</button>
->>>>>>> 2682bc12b481495e61c8f3ca5682056a2fa7765c
           </div>
         </form>
       </div>
 
-<<<<<<< HEAD
       <section className="card-clean stock-settings-section">
         <div className="stock-settings-head"><div><Settings2 size={21} /><span><strong>ตั้งค่าถังและระดับแจ้งเตือน</strong><small>ระบบจะแจ้งเจ้าของแบบเรียลไทม์เมื่อยอดถึงจุดสั่งเติมหรือจุดวิกฤต</small></span></div></div>
         <div className="stock-settings-grid">
@@ -360,24 +267,6 @@ function AuditTable({ audits }) {
             {!audits.length && <tr><td colSpan="7" className="p-8 text-center text-slate-400">ยังไม่มีประวัติตรวจนับ</td></tr>}
           </tbody>
         </table>
-=======
-      <div className="card overflow-hidden">
-        <div className="border-b border-slate-100 p-5"><h2 className="flex items-center gap-2 text-lg font-black"><History size={20} /> ประวัติ stock_movements</h2></div>
-        <div className="divide-y divide-slate-100">
-          {transactions.map((row) => (
-            <div key={row.id || `${row.created_at}-${row.item_type}`} className="stock-history-row grid gap-2 p-4 text-sm md:grid-cols-7 md:items-center">
-              <div data-label="วันที่" className="font-black">{date(row.transaction_date || row.received_date || row.created_at)}</div>
-              <div data-label="ประเภท"><span className="badge-blue">{row.item_type || row.fuel_type}</span></div>
-              <div data-label="จำนวน" className={Number(row.change_liters || row.quantity_liters) >= 0 ? 'font-black text-blue-700' : 'font-black text-red-700'}>{number(row.change_liters ?? row.quantity_liters, 2)} ลิตร</div>
-              <div data-label="ยอดเงิน">{money(row.amount_baht)}</div>
-              <div data-label="เลขบิล" className="truncate">{row.bill_no || '-'}</div>
-              <div data-label="ร้าน / รายการ" className="truncate text-slate-500">{row.supplier_name || row.supplier || row.transaction_type || '-'}</div>
-              <div data-label="หลักฐาน">{row.photo ? <a className="badge-blue" href={uploadUrl(row.photo)} target="_blank" rel="noreferrer">ดูรูป</a> : <span className="text-slate-300">ไม่มีรูป</span>}</div>
-            </div>
-          ))}
-          {!transactions.length && <div className="p-8 text-center text-sm font-bold text-slate-400">ยังไม่มีประวัติสต๊อก</div>}
-        </div>
->>>>>>> 2682bc12b481495e61c8f3ca5682056a2fa7765c
       </div>
     </div>
   );
@@ -388,34 +277,17 @@ function Field({ label, value, onChange, type = 'text', suffix = '', required = 
     <label className="block">
       <span className="label">{label}</span>
       <div className="relative mt-1">
-<<<<<<< HEAD
         <input required={required} type={type} step={type === 'number' ? '0.01' : undefined} className={`input ${suffix ? 'pr-20' : ''}`} value={value ?? ''} onChange={(e) => onChange(e.target.value)} />
         {suffix && <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-black text-slate-400">{suffix}</span>}
-=======
-        <input required={required} type={type} step={type === 'number' ? '0.01' : undefined} className={`input ${suffix ? 'pr-20' : ''}`} value={value || ''} onChange={(e) => onChange(e.target.value)} />
-        {suffix && <span className="absolute right-4 top-1/2 -translate-y-1/2 text-xs font-black text-slate-400">{suffix}</span>}
->>>>>>> 2682bc12b481495e61c8f3ca5682056a2fa7765c
       </div>
     </label>
   );
 }
 
 function Select({ label, value, onChange }) {
-<<<<<<< HEAD
   return <label className="block"><span className="label">{label}</span><select className="input mt-1" value={value} onChange={(e) => onChange(e.target.value)}>{ITEM_TYPES.map((item) => <option key={item} value={item}>{item}</option>)}</select></label>;
 }
 
-=======
-  return (
-    <label className="block">
-      <span className="label">{label}</span>
-      <select className="input mt-1" value={value} onChange={(e) => onChange(e.target.value)}>{ITEM_TYPES.map((item) => <option key={item} value={item}>{item}</option>)}</select>
-    </label>
-  );
-}
-
-
->>>>>>> 2682bc12b481495e61c8f3ca5682056a2fa7765c
 function formatFileSize(bytes = 0) {
   const n = Number(bytes || 0);
   if (n >= 1024 * 1024) return `${(n / 1024 / 1024).toFixed(1)} MB`;
@@ -425,7 +297,6 @@ function formatFileSize(bytes = 0) {
 
 function StockFilePicker({ file, setFile }) {
   const [previewUrl, setPreviewUrl] = useState('');
-<<<<<<< HEAD
   useEffect(() => {
     if (!file || !String(file.type || '').startsWith('image/')) { setPreviewUrl(''); return undefined; }
     const url = URL.createObjectURL(file); setPreviewUrl(url); return () => URL.revokeObjectURL(url);
@@ -436,62 +307,6 @@ function StockFilePicker({ file, setFile }) {
       <div className="flex items-start justify-between gap-3"><div><span className="label">รูปบิล / หลักฐานน้ำมันเข้าสต๊อก</span><p className="hint mt-1">รองรับรูปภาพและ PDF</p></div><span className={`shrink-0 rounded-full px-3 py-1 text-[11px] font-black ${file ? 'bg-blue-50 text-blue-700' : 'bg-slate-100 text-slate-500'}`}>{file ? 'เลือกแล้ว' : 'ยังไม่เลือก'}</span></div>
       <div className="mt-3 rounded-2xl border border-dashed border-blue-200 bg-blue-50/40 p-4 text-center"><input className="block w-full cursor-pointer text-sm font-bold text-slate-600 file:mr-3 file:rounded-xl file:border-0 file:bg-blue-600 file:px-4 file:py-2 file:text-sm file:font-black file:text-white" type="file" accept="image/*,application/pdf" capture="environment" onChange={(e) => setFile(e.target.files?.[0] || null)} /></div>
       {file && <div className="mt-3 flex gap-3 rounded-2xl border border-blue-100 bg-blue-50 p-3"><div className="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-white ring-1 ring-blue-100">{previewUrl ? <img src={previewUrl} alt={file.name} className="h-full w-full object-cover" /> : isPdf ? <FileText className="text-blue-700" size={28} /> : <Camera className="text-blue-700" size={28} />}</div><div className="min-w-0 flex-1"><p className="text-xs font-black text-blue-800">ไฟล์ที่เลือก</p><p className="mt-1 break-all text-sm font-black text-slate-900">{file.name}</p><p className="mt-1 text-xs font-bold text-slate-500">{formatFileSize(file.size)}</p></div><button type="button" onClick={() => setFile(null)} className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white text-slate-500 ring-1 ring-slate-200"><X size={16} /></button></div>}
-=======
-
-  useEffect(() => {
-    if (!file || !String(file.type || '').startsWith('image/')) {
-      setPreviewUrl('');
-      return undefined;
-    }
-    const url = URL.createObjectURL(file);
-    setPreviewUrl(url);
-    return () => URL.revokeObjectURL(url);
-  }, [file]);
-
-  const isPdf = file && (String(file.type || '').includes('pdf') || /\.pdf$/i.test(String(file.name || '')));
-
-  return (
-    <div className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm md:col-span-2">
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <span className="label">รูปบิล / รูปน้ำมันเข้าสต๊อก</span>
-          <p className="hint mt-1">เลือกไฟล์แล้วจะแสดงตัวอย่างและชื่อไฟล์ทันที</p>
-        </div>
-        <span className={`shrink-0 rounded-full px-3 py-1 text-[11px] font-black ${file ? 'bg-blue-50 text-blue-700' : 'bg-slate-100 text-slate-500'}`}>
-          {file ? 'เลือกแล้ว' : 'ยังไม่เลือก'}
-        </span>
-      </div>
-      <div className="mt-3 rounded-2xl border border-dashed border-blue-200 bg-blue-50/40 p-4 text-center">
-        <input
-          className="block w-full cursor-pointer text-sm font-bold text-slate-600 file:mr-3 file:rounded-xl file:border-0 file:bg-blue-600 file:px-4 file:py-2 file:text-sm file:font-black file:text-white"
-          type="file"
-          accept="image/*,application/pdf"
-          capture="environment"
-          onChange={(e) => setFile(e.target.files?.[0] || null)}
-        />
-      </div>
-      {file && (
-        <div className="mt-3 flex gap-3 rounded-2xl border border-blue-100 bg-blue-50 p-3">
-          <div className="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-white ring-1 ring-blue-100">
-            {previewUrl ? (
-              <img src={previewUrl} alt={file.name} className="h-full w-full object-cover" />
-            ) : isPdf ? (
-              <FileText className="text-blue-700" size={28} />
-            ) : (
-              <Camera className="text-blue-700" size={28} />
-            )}
-          </div>
-          <div className="min-w-0 flex-1">
-            <p className="text-xs font-black text-blue-800">ไฟล์ที่เลือกแล้ว</p>
-            <p className="mt-1 break-all text-sm font-black text-slate-900">{file.name}</p>
-            <p className="mt-1 text-xs font-bold text-slate-500">{formatFileSize(file.size)}</p>
-          </div>
-          <button type="button" onClick={() => setFile(null)} className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white text-slate-500 ring-1 ring-slate-200">
-            <X size={16} />
-          </button>
-        </div>
-      )}
->>>>>>> 2682bc12b481495e61c8f3ca5682056a2fa7765c
     </div>
   );
 }

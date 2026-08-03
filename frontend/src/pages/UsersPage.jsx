@@ -62,7 +62,6 @@ export default function UsersPage() {
         </div>
         <span className="page-orbit-signal">2 ROLES</span>
       </div>
-<<<<<<< HEAD
       <section className="role-permission-grid" aria-label="สรุปสิทธิ์ผู้ใช้งาน">
         <div className="role-permission-card is-owner">
           <div><ShieldCheck size={20} /><strong>เจ้าของกิจการ</strong></div>
@@ -74,8 +73,6 @@ export default function UsersPage() {
         </div>
       </section>
 
-=======
->>>>>>> 2682bc12b481495e61c8f3ca5682056a2fa7765c
       <form onSubmit={submit} className="card p-4 md:p-5">
         <h2 className="mb-4 flex items-center gap-2 text-lg font-black"><UserPlus size={20} /> {editing ? 'แก้ไขผู้ใช้งาน' : 'เพิ่มผู้ใช้งาน'}</h2>
         <div className="grid gap-3 md:grid-cols-3">
@@ -113,10 +110,6 @@ export default function UsersPage() {
   );
 }
 
-<<<<<<< HEAD
 function Field({ label, value, onChange, type = 'text', required = false, autoComplete = undefined }) {
-=======
-function Field({ label, value, onChange, type = 'text', required = false, autoComplete }) {
->>>>>>> 2682bc12b481495e61c8f3ca5682056a2fa7765c
   return <label className="block"><span className="label">{label}</span><input required={required} type={type} autoComplete={autoComplete} className="input mt-1" value={value || ''} onChange={(e) => onChange(e.target.value)} /></label>;
 }

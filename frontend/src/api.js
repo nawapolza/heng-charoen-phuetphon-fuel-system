@@ -94,17 +94,12 @@ export const api = {
   createDelivery: (formData) => apiRequest('/deliveries', { method: 'POST', body: formData }),
   updateDelivery: (id, formData) => apiRequest(`/deliveries/${id}`, { method: 'PUT', body: formData }),
   deleteDelivery: (id) => apiRequest(`/deliveries/${id}`, { method: 'DELETE' }),
- HEAD
   stockStatus: () => apiRequest('/stocks/status'),
   stocks: () => apiRequest('/stocks'),
   stockTransactions: () => apiRequest('/stocks/transactions'),
   stockAudits: () => apiRequest('/stocks/audits'),
   auditStock: (body) => apiRequest('/stocks/audit', { method: 'POST', body }),
   updateStockSettings: (itemType, body) => apiRequest(`/stocks/${encodeURIComponent(itemType)}/settings`, { method: 'PUT', body }),
-=======
-  stocks: () => apiRequest('/stocks'),
-  stockTransactions: () => apiRequest('/stocks/transactions'),
->>>>>>> 2682bc12b481495e61c8f3ca5682056a2fa7765c
   addStock: (formData) => apiRequest('/stocks/add', { method: 'POST', body: formData }),
   adjustStock: (body) => apiRequest('/stocks/adjust', { method: 'POST', body }),
   users: () => apiRequest('/users'),
@@ -116,10 +111,7 @@ export const api = {
   createVehicle: (body) => apiRequest('/vehicles', { method: 'POST', body }),
   updateVehicle: (id, body) => apiRequest(`/vehicles/${id}`, { method: 'PUT', body }),
   deleteVehicle: (id) => apiRequest(`/vehicles/${id}`, { method: 'DELETE' }),
- HEAD
   monthlyReport: (month) => apiRequest(`/reports/monthly${query({ month })}`),
-=======
->>>>>>> 2682bc12b481495e61c8f3ca5682056a2fa7765c
   notifications: () => apiRequest('/notifications'),
   markNotificationRead: (id) => apiRequest(`/notifications/${id}/read`, { method: 'PATCH' }),
 };
