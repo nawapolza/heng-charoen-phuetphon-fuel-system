@@ -30,7 +30,7 @@ const io = new Server(httpServer, {
 });
 
 io.on('connection', (socket) => {
-  socket.emit('server:hello', { success: true, build: 'heng-charoen-v60-fuel-control', at: new Date().toISOString() });
+  socket.emit('server:hello', { success: true, build: 'heng-charoen-v62-multi-branch', at: new Date().toISOString() });
 });
 const uploadDir = path.join(__dirname, 'public', 'uploads');
 fs.mkdirSync(uploadDir, { recursive: true });
@@ -68,6 +68,13 @@ const DEFAULT_STOCK_SETTINGS = {
     reorder_level_liters: 150,
     critical_level_liters: 50,
   },
+};
+
+const DEFAULT_BRANCH = {
+  code: 'HQ',
+  name: 'สำนักงานใหญ่',
+  address: '',
+  phone: '',
 };
 
 let mongoClient = null;
@@ -258,6 +265,10 @@ function normalizeItemType(value) {
   return ITEM_TYPE_MAP[key] || ITEM_TYPE_MAP[cleanString(value)] || null;
 }
 
+function isStockIntakeOperation(value) {
+  return ['เติมสต๊อก', 'เช็คเติมสต๊อก'].includes(cleanString(value));
+}
+
 function monthFromDate(value) {
   const date = parseDateOrNull(value) || today();
   return date.slice(0, 7);
@@ -285,6 +296,56 @@ function publicUser(user) {
   delete out.password_hash;
   delete out.password;
   return out;
+}
+
+async function ensureDefaultBranch(db) {
+  let branch = await db.collection('branches').findOne({ is_active: { $ne: 0 } }, { sort: { is_default: -1, created_at: 1 } });
+  if (!branch) {
+    const doc = {
+      ...DEFAULT_BRANCH,
+      is_default: 1,
+      is_active: 1,
+      created_at: nowIso(),
+      updated_at: nowIso(),
+    };
+    const result = await db.collection('branches').insertOne(doc);
+    branch = { ...doc, _id: result.insertedId };
+  }
+  if (!branch.is_default) {
+    await db.collection('branches').updateOne({ _id: branch._id }, { $set: { is_default: 1, updated_at: nowIso() } });
+    branch.is_default = 1;
+  }
+  return branch;
+}
+
+async function findBranch(db, value, { includeInactive = false } = {}) {
+  const text = cleanString(value);
+  if (!text || text === 'all') return null;
+  const filter = includeInactive ? {} : { is_active: { $ne: 0 } };
+  const oid = oidOrNull(text);
+  if (oid) filter._id = oid;
+  else filter.code = text.toUpperCase();
+  return db.collection('branches').findOne(filter);
+}
+
+async function resolveBranchContext(db, user, reqLike = {}) {
+  const headers = reqLike.headers || {};
+  const query = reqLike.query || {};
+  const body = reqLike.body || {};
+  const requested = cleanString(headers['x-branch-id'] || headers['X-Branch-Id'] || query.branch_id || body.branch_id);
+  let branch = null;
+  if ((user?.role || '') === 'owner' && requested) branch = await findBranch(db, requested);
+  if (!branch && user?.branch_id) branch = await findBranch(db, user.branch_id);
+  if (!branch) branch = await ensureDefaultBranch(db);
+  return mongoToPlain(branch);
+}
+
+function branchFields(branch) {
+  return {
+    branch_id: cleanString(branch?.id || branch?._id),
+    branch_code: cleanString(branch?.code),
+    branch_name: cleanString(branch?.name) || DEFAULT_BRANCH.name,
+  };
 }
 
 function parseCookieHeader(cookieHeader) {
@@ -329,54 +390,93 @@ function signUserToken(user) {
 }
 
 async function ensureIndexes(db) {
+  // V62: เปลี่ยนสต๊อกจาก unique เฉพาะประเภท เป็น unique ต่อ “สาขา + ประเภท”
+  try { await db.collection('stocks').dropIndex('item_type_1'); } catch (_) {}
+
   await Promise.all([
+    db.collection('branches').createIndex({ code: 1 }, { unique: true }),
+    db.collection('branches').createIndex({ is_active: 1, is_default: -1 }),
     db.collection('users').createIndex({ username: 1 }, { unique: true }),
+    db.collection('users').createIndex({ branch_id: 1, is_active: 1 }),
+    db.collection('deliveries').createIndex({ branch_id: 1, work_date: -1 }),
     db.collection('deliveries').createIndex({ user_id: 1, work_date: -1 }),
     db.collection('deliveries').createIndex({ vehicle_id: 1 }),
     db.collection('deliveries').createIndex({ item_type: 1, fill_date: -1 }),
     db.collection('deliveries').createIndex({ 'jobs.origin_place': 1 }),
     db.collection('deliveries').createIndex({ 'jobs.destination_place': 1 }),
+    db.collection('vehicles').createIndex({ branch_id: 1, plate_no: 1 }),
     db.collection('vehicles').createIndex({ user_id: 1, plate_no: 1 }),
+    db.collection('notifications').createIndex({ branch_id: 1, created_at: -1 }),
     db.collection('notifications').createIndex({ delivery_id: 1, created_at: -1 }),
-    db.collection('notifications').createIndex({ kind: 1, item_type: 1, is_read: 1, created_at: -1 }),
-    db.collection('stocks').createIndex({ item_type: 1 }, { unique: true }),
-    db.collection('stock_movements').createIndex({ item_type: 1, transaction_date: -1 }),
-    db.collection('stock_audits').createIndex({ item_type: 1, audit_date: -1 }),
+    db.collection('notifications').createIndex({ kind: 1, branch_id: 1, item_type: 1, is_read: 1, created_at: -1 }),
+    db.collection('stocks').createIndex({ branch_id: 1, item_type: 1 }, { unique: true }),
+    db.collection('stock_movements').createIndex({ branch_id: 1, item_type: 1, transaction_date: -1 }),
+    db.collection('stock_transactions').createIndex({ branch_id: 1, item_type: 1, transaction_date: -1 }),
+    db.collection('stock_audits').createIndex({ branch_id: 1, item_type: 1, audit_date: -1 }),
     db.collection('stock_audits').createIndex({ created_at: -1 }),
     db.collection('uploaded_files').createIndex({ created_at: -1 }),
   ]);
 
-  for (const itemType of ITEM_TYPES) {
-    const defaults = DEFAULT_STOCK_SETTINGS[itemType] || DEFAULT_STOCK_SETTINGS['ดีเซล'];
-    await db.collection('stocks').updateOne(
-      { item_type: itemType },
-      {
-        $setOnInsert: {
-          item_type: itemType,
-          balance_liters: 0,
-          tank_name: defaults.tank_name,
-          capacity_liters: defaults.capacity_liters,
-          reorder_level_liters: defaults.reorder_level_liters,
-          critical_level_liters: defaults.critical_level_liters,
-          last_alert_status: 'ready',
-          created_at: nowIso(),
-        },
-        $set: { updated_at: nowIso() },
-      },
-      { upsert: true },
+  const defaultBranchDoc = await ensureDefaultBranch(db);
+  const defaultBranch = branchFields(mongoToPlain(defaultBranchDoc));
+
+  // ย้ายข้อมูล V61 เดิมเข้าสำนักงานใหญ่โดยไม่ลบข้อมูลเก่า
+  const migrateCollections = ['deliveries', 'stock_movements', 'stock_transactions', 'stock_audits', 'notifications', 'vehicles'];
+  for (const collectionName of migrateCollections) {
+    await db.collection(collectionName).updateMany(
+      { $or: [{ branch_id: { $exists: false } }, { branch_id: '' }, { branch_id: null }] },
+      { $set: { ...defaultBranch, updated_at: nowIso() } },
     );
-    const missingFieldUpdates = [
-      ['tank_name', defaults.tank_name],
-      ['capacity_liters', defaults.capacity_liters],
-      ['reorder_level_liters', defaults.reorder_level_liters],
-      ['critical_level_liters', defaults.critical_level_liters],
-      ['last_alert_status', 'ready'],
-    ];
-    for (const [field, value] of missingFieldUpdates) {
+  }
+  await db.collection('users').updateMany(
+    { role: { $ne: 'owner' }, $or: [{ branch_id: { $exists: false } }, { branch_id: '' }, { branch_id: null }] },
+    { $set: { ...defaultBranch, updated_at: nowIso() } },
+  );
+  await db.collection('users').updateMany(
+    { role: 'owner', $or: [{ branch_id: { $exists: false } }, { branch_id: '' }, { branch_id: null }] },
+    { $set: { ...defaultBranch, updated_at: nowIso() } },
+  );
+  await db.collection('stocks').updateMany(
+    { $or: [{ branch_id: { $exists: false } }, { branch_id: '' }, { branch_id: null }] },
+    { $set: { ...defaultBranch, updated_at: nowIso() } },
+  );
+
+  const branches = await db.collection('branches').find({ is_active: { $ne: 0 } }).toArray();
+  for (const branchDoc of branches) {
+    const branch = branchFields(mongoToPlain(branchDoc));
+    for (const itemType of ITEM_TYPES) {
+      const defaults = DEFAULT_STOCK_SETTINGS[itemType] || DEFAULT_STOCK_SETTINGS['ดีเซล'];
       await db.collection('stocks').updateOne(
-        { item_type: itemType, [field]: { $exists: false } },
-        { $set: { [field]: value, updated_at: nowIso() } },
+        { branch_id: branch.branch_id, item_type: itemType },
+        {
+          $setOnInsert: {
+            ...branch,
+            item_type: itemType,
+            balance_liters: 0,
+            tank_name: defaults.tank_name,
+            capacity_liters: defaults.capacity_liters,
+            reorder_level_liters: defaults.reorder_level_liters,
+            critical_level_liters: defaults.critical_level_liters,
+            last_alert_status: 'ready',
+            created_at: nowIso(),
+          },
+          $set: { ...branch, updated_at: nowIso() },
+        },
+        { upsert: true },
       );
+      const missingFieldUpdates = [
+        ['tank_name', defaults.tank_name],
+        ['capacity_liters', defaults.capacity_liters],
+        ['reorder_level_liters', defaults.reorder_level_liters],
+        ['critical_level_liters', defaults.critical_level_liters],
+        ['last_alert_status', 'ready'],
+      ];
+      for (const [field, value] of missingFieldUpdates) {
+        await db.collection('stocks').updateOne(
+          { branch_id: branch.branch_id, item_type: itemType, [field]: { $exists: false } },
+          { $set: { [field]: value, updated_at: nowIso() } },
+        );
+      }
     }
   }
 }
@@ -443,30 +543,46 @@ async function findVehiclePublic(db, id) {
   return mongoToPlain(await db.collection('vehicles').findOne({ _id: oid }));
 }
 
-async function resolveVehicleId(db, user, data) {
+async function resolveVehicleId(db, user, data, branch = null) {
   if (data.vehicle_id) {
     const oid = oidOrNull(data.vehicle_id);
     if (!oid) return null;
     const filter = { _id: oid, is_active: { $ne: 0 } };
-    if ((user.role || '') !== 'owner') filter.user_id = String(user.id);
+    if (branch?.id) filter.branch_id = branch.id;
+    if ((user.role || '') !== 'owner') filter.$or = [
+      { user_id: String(user.id) },
+      { user_id: '' },
+      { user_id: null },
+      { user_id: { $exists: false } },
+    ];
     const vehicle = await db.collection('vehicles').findOne(filter, { projection: { _id: 1 } });
     return vehicle ? String(vehicle._id) : null;
   }
 
   const plate = cleanString(data.plate_no);
   if (!plate) return null;
-  const ownerAssignedUser = (user.role || '') === 'owner' && data.user_id;
-  const vehicleUserId = ownerAssignedUser ? String(data.user_id) : String(user.id);
+  const vehicleUserId = (user.role || '') === 'owner' ? cleanString(data.user_id) : String(user.id);
   const vehicleNo = cleanString(data.vehicle_no) || null;
   const driverName = cleanString(data.driver_name) || ((user.role || '') === 'owner' ? null : (user.name || null));
 
-  const existing = await db.collection('vehicles').findOne(
-    { plate_no: plate, user_id: vehicleUserId, is_active: 1 },
-    { sort: { created_at: -1 }, projection: { _id: 1 } },
-  );
+  const existingFilter = { plate_no: plate, branch_id: cleanString(branch?.id), is_active: { $ne: 0 } };
+  if ((user.role || '') !== 'owner') existingFilter.$or = [
+    { user_id: String(user.id) },
+    { user_id: '' },
+    { user_id: null },
+    { user_id: { $exists: false } },
+  ];
+  const existing = await db.collection('vehicles').findOne(existingFilter, { sort: { created_at: -1 }, projection: { _id: 1 } });
   if (existing) return String(existing._id);
 
+  const duplicatePlate = await db.collection('vehicles').findOne(
+    { plate_no: plate, branch_id: cleanString(branch?.id), is_active: { $ne: 0 } },
+    { projection: { _id: 1 } },
+  );
+  if (duplicatePlate) return null;
+
   const result = await db.collection('vehicles').insertOne({
+    ...branchFields(branch || {}),
     user_id: vehicleUserId,
     plate_no: plate,
     vehicle_no: vehicleNo,
@@ -683,7 +799,7 @@ function summarizeDeliveryJobs(jobs = []) {
   return summary;
 }
 
-async function normalizeDeliveryBody(db, body, files = {}, user, existing = {}) {
+async function normalizeDeliveryBody(db, body, files = {}, user, existing = {}, branch = null) {
   const itemType = normalizeItemType(body.item_type || body.oil_type || existing.item_type || existing.oil_type);
   if (!itemType) {
     const err = new Error('เลือกประเภทให้ถูกต้อง: ดีเซล, น้ำมันเครื่อง, แอดบลู');
@@ -742,7 +858,9 @@ async function normalizeDeliveryBody(db, body, files = {}, user, existing = {}) 
   const efficiencyStatus = fuelVarianceLiters > 0.01 ? 'over_standard' : fuelVarianceLiters < -0.01 ? 'under_standard' : 'on_standard';
 
   const photoFields = await extractPhotoFields(db, files, existing);
+  const resolvedBranch = branch || await ensureDefaultBranch(db).then(mongoToPlain);
   const data = {
+    ...branchFields(resolvedBranch),
     user_id: (user.role || '') === 'owner' && body.user_id ? String(body.user_id) : String(user.id),
     vehicle_id: body.vehicle_id ? String(body.vehicle_id) : existing.vehicle_id || null,
     work_date: workDate,
@@ -856,6 +974,9 @@ async function createAutoNotifications(db, deliveryId, data) {
   if (!data.document_photo && !toPhotoArray(data.document_photos).length) alerts.push(['ยังไม่แนบรูปเอกสาร', 'รายการนี้ยังไม่มีรูปเอกสารประกอบ', 'info']);
   if (!alerts.length) return;
   await db.collection('notifications').insertMany(alerts.map((alert) => ({
+    branch_id: data.branch_id,
+    branch_name: data.branch_name,
+    branch_code: data.branch_code,
     delivery_id: deliveryId,
     title: alert[0],
     message: alert[1],
@@ -896,10 +1017,11 @@ function stockLevelInfo(stock = {}) {
   };
 }
 
-async function evaluateStockLevel(db, itemType, { forceNotification = false } = {}) {
+async function evaluateStockLevel(db, itemType, branchId, { forceNotification = false } = {}) {
   const normalized = normalizeItemType(itemType);
-  if (!normalized) return null;
-  const stock = await db.collection('stocks').findOne({ item_type: normalized });
+  const resolvedBranchId = cleanString(branchId);
+  if (!normalized || !resolvedBranchId) return null;
+  const stock = await db.collection('stocks').findOne({ branch_id: resolvedBranchId, item_type: normalized });
   if (!stock) return null;
   const info = stockLevelInfo(stock);
   const previousStatus = cleanString(stock.last_alert_status, 'ready');
@@ -919,19 +1041,20 @@ async function evaluateStockLevel(db, itemType, { forceNotification = false } = 
   );
 
   if (forceNotification || statusChanged) {
-    let title = `สต๊อก ${normalized} พร้อมให้บริการ`;
+    const branchName = cleanString(info.branch_name) || DEFAULT_BRANCH.name;
+    let title = `[${branchName}] สต๊อก ${normalized} พร้อมให้บริการ`;
     let message = `${info.tank_name} คงเหลือ ${info.balance_liters.toFixed(2)} ลิตร (${info.available_percent.toFixed(2)}%)`;
     let type = 'info';
     if (info.level_status === 'critical') {
-      title = `สต๊อก ${normalized} วิกฤต`;
+      title = `[${branchName}] สต๊อก ${normalized} วิกฤต`;
       message = `${info.tank_name} เหลือ ${info.balance_liters.toFixed(2)} ลิตร ต่ำกว่าจุดวิกฤต ${info.critical_level_liters.toFixed(2)} ลิตร กรุณาเติมทันที`;
       type = 'danger';
     } else if (info.level_status === 'low') {
-      title = `สต๊อก ${normalized} ต่ำ`;
+      title = `[${branchName}] สต๊อก ${normalized} ต่ำ`;
       message = `${info.tank_name} เหลือ ${info.balance_liters.toFixed(2)} ลิตร ถึงจุดสั่งเติม ${info.reorder_level_liters.toFixed(2)} ลิตร`;
       type = 'warning';
     } else if (previousStatus === 'low' || previousStatus === 'critical') {
-      title = `สต๊อก ${normalized} กลับมาพร้อมใช้`;
+      title = `[${branchName}] สต๊อก ${normalized} กลับมาพร้อมใช้`;
       message = `${info.tank_name} คงเหลือ ${info.balance_liters.toFixed(2)} ลิตร ระบบกลับสู่สถานะพร้อมให้บริการ`;
       type = 'success';
     } else if (!forceNotification) {
@@ -939,6 +1062,9 @@ async function evaluateStockLevel(db, itemType, { forceNotification = false } = 
     }
     await db.collection('notifications').insertOne({
       kind: 'stock_level',
+      branch_id: resolvedBranchId,
+      branch_code: cleanString(info.branch_code),
+      branch_name: branchName,
       item_type: normalized,
       title,
       message,
@@ -946,27 +1072,44 @@ async function evaluateStockLevel(db, itemType, { forceNotification = false } = 
       is_read: 0,
       created_at: nowIso(),
     });
-    emitDataChanged('notifications', 'create', { kind: 'stock_level', item_type: normalized });
+    emitDataChanged('notifications', 'create', { kind: 'stock_level', branch_id: resolvedBranchId, item_type: normalized });
   }
   return info;
 }
 
-async function applyStockChange(db, { item_type, change_liters, transaction_type, ref_delivery_id = null, user_id = null, note = '', transaction_date = null, amount_baht = 0, bill_no = '', supplier_name = '', photo = '' }) {
+async function applyStockChange(db, { branch_id, branch_name = '', branch_code = '', item_type, change_liters, transaction_type, ref_delivery_id = null, user_id = null, note = '', transaction_date = null, amount_baht = 0, bill_no = '', supplier_name = '', photo = '' }) {
   const itemType = normalizeItemType(item_type);
   const change = toNumber(change_liters, 0);
-  if (!itemType || change === 0) return null;
+  const resolvedBranchId = cleanString(branch_id);
+  if (!itemType || change === 0 || !resolvedBranchId) return null;
+  const defaults = DEFAULT_STOCK_SETTINGS[itemType] || DEFAULT_STOCK_SETTINGS['ดีเซล'];
 
   await db.collection('stocks').updateOne(
-    { item_type: itemType },
+    { branch_id: resolvedBranchId, item_type: itemType },
     {
       $inc: { balance_liters: change },
-      $set: { updated_at: nowIso() },
-      $setOnInsert: { item_type: itemType, created_at: nowIso() },
+      $set: {
+        branch_name: cleanString(branch_name) || DEFAULT_BRANCH.name,
+        branch_code: cleanString(branch_code),
+        updated_at: nowIso(),
+      },
+      $setOnInsert: {
+        branch_id: resolvedBranchId,
+        item_type: itemType,
+        tank_name: defaults.tank_name,
+        capacity_liters: defaults.capacity_liters,
+        reorder_level_liters: defaults.reorder_level_liters,
+        critical_level_liters: defaults.critical_level_liters,
+        created_at: nowIso(),
+      },
     },
     { upsert: true },
   );
 
   const inserted = await db.collection('stock_movements').insertOne({
+    branch_id: resolvedBranchId,
+    branch_name: cleanString(branch_name) || DEFAULT_BRANCH.name,
+    branch_code: cleanString(branch_code),
     item_type: itemType,
     transaction_type,
     quantity_liters: Math.abs(change),
@@ -981,15 +1124,18 @@ async function applyStockChange(db, { item_type, change_liters, transaction_type
     transaction_date: parseDateOrNull(transaction_date) || today(),
     created_at: nowIso(),
   });
-  const stockStatus = await evaluateStockLevel(db, itemType);
+  const stockStatus = await evaluateStockLevel(db, itemType, resolvedBranchId);
   return { movement_id: inserted.insertedId, stock: stockStatus };
 }
 
 async function syncStockForDeliveryCreate(db, deliveryId, data, userId) {
-  if (data.operation_type === 'เติมสต๊อก') return;
+  if (isStockIntakeOperation(data.operation_type)) return;
   const qty = toNumber(data.quantity_liters, 0);
   if (qty > 0) {
     await applyStockChange(db, {
+      branch_id: data.branch_id,
+      branch_name: data.branch_name,
+      branch_code: data.branch_code,
       item_type: data.item_type,
       change_liters: -qty,
       transaction_type: 'ทำน้ำมันบรรทุก',
@@ -1009,8 +1155,11 @@ async function syncStockForDeliveryUpdate(db, deliveryId, oldData, newData, user
   const newQty = toNumber(newData.quantity_liters, 0);
   const oldType = normalizeItemType(oldData.item_type || oldData.oil_type);
   const newType = normalizeItemType(newData.item_type || newData.oil_type);
-  if (oldQty > 0 && oldType) {
+  if (oldQty > 0 && oldType && !isStockIntakeOperation(oldData.operation_type)) {
     await applyStockChange(db, {
+      branch_id: oldData.branch_id || newData.branch_id,
+      branch_name: oldData.branch_name || newData.branch_name,
+      branch_code: oldData.branch_code || newData.branch_code,
       item_type: oldType,
       change_liters: oldQty,
       transaction_type: 'ยกเลิกยอดเดิมก่อนแก้ไข',
@@ -1020,8 +1169,11 @@ async function syncStockForDeliveryUpdate(db, deliveryId, oldData, newData, user
       transaction_date: newData.fill_date || newData.work_date,
     });
   }
-  if (newQty > 0 && newType && newData.operation_type !== 'เติมสต๊อก') {
+  if (newQty > 0 && newType && !isStockIntakeOperation(newData.operation_type)) {
     await applyStockChange(db, {
+      branch_id: newData.branch_id,
+      branch_name: newData.branch_name,
+      branch_code: newData.branch_code,
       item_type: newType,
       change_liters: -newQty,
       transaction_type: 'ทำน้ำมันบรรทุก',
@@ -1039,8 +1191,11 @@ async function syncStockForDeliveryUpdate(db, deliveryId, oldData, newData, user
 async function syncStockForDeliveryDelete(db, delivery, userId) {
   const qty = toNumber(delivery.quantity_liters, 0);
   const itemType = normalizeItemType(delivery.item_type || delivery.oil_type);
-  if (qty > 0 && itemType && delivery.operation_type !== 'เติมสต๊อก') {
+  if (qty > 0 && itemType && !isStockIntakeOperation(delivery.operation_type)) {
     await applyStockChange(db, {
+      branch_id: delivery.branch_id,
+      branch_name: delivery.branch_name,
+      branch_code: delivery.branch_code,
       item_type: itemType,
       change_liters: qty,
       transaction_type: 'คืนสต๊อกจากการลบรายการ',
@@ -1052,8 +1207,10 @@ async function syncStockForDeliveryDelete(db, delivery, userId) {
   }
 }
 
-async function buildDeliveryFilter(db, user, query) {
+async function buildDeliveryFilter(db, user, query, branch = null) {
   const filter = {};
+  const resolvedBranchId = cleanString(branch?.id || branch?._id || branch?.branch_id);
+  if (resolvedBranchId) filter.branch_id = resolvedBranchId;
   if ((user.role || '') !== 'owner') filter.user_id = String(user.id);
   if (query.from) {
     filter.work_date = filter.work_date || {};
@@ -1095,8 +1252,8 @@ async function buildDeliveryFilter(db, user, query) {
         { recorder_name: rx },
         { driver_name_input: rx },
       ];
-      const vehicleFilter = { is_active: 1, $or: [{ plate_no: rx }, { driver_name: rx }, { vehicle_no: rx }, { description: rx }] };
-      if ((user.role || '') !== 'owner') vehicleFilter.user_id = String(user.id);
+      const vehicleFilter = { is_active: 1, branch_id: resolvedBranchId, $or: [{ plate_no: rx }, { driver_name: rx }, { vehicle_no: rx }, { description: rx }] };
+      if ((user.role || '') !== 'owner') vehicleFilter.$and = [{ $or: [{ user_id: String(user.id) }, { user_id: '' }, { user_id: null }, { user_id: { $exists: false } }] }];
       const vehicles = await db.collection('vehicles').find(vehicleFilter, { projection: { _id: 1 } }).toArray();
       const vehicleIds = vehicles.map((v) => String(v._id));
       if (vehicleIds.length) or.push({ vehicle_id: { $in: vehicleIds } });
@@ -1332,7 +1489,7 @@ app.use(cors({
     return cb(new Error(`CORS blocked origin: ${origin}`));
   },
   credentials: true,
-  allowedHeaders: ['Authorization', 'Content-Type', 'X-Requested-With', 'X-Access-Token'],
+  allowedHeaders: ['Authorization', 'Content-Type', 'X-Requested-With', 'X-Access-Token', 'X-Branch-Id'],
   exposedHeaders: ['Authorization'],
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   optionsSuccessStatus: 204,
@@ -1359,7 +1516,7 @@ app.use((req, _res, next) => {
   next();
 });
 
-app.get('/ping', (req, res) => jsonResponse(res, { success: true, message: 'pong', build: 'heng-charoen-v60-fuel-control', time: nowIso() }));
+app.get('/ping', (req, res) => jsonResponse(res, { success: true, message: 'pong', build: 'heng-charoen-v62-multi-branch', time: nowIso() }));
 
 app.use(asyncHandler(async (req, _res, next) => {
   req.db = await getDb();
@@ -1382,14 +1539,14 @@ const router = express.Router();
 router.get('/', (_req, res) => jsonResponse(res, {
   success: true,
   name: 'Heng Charoen Phuetphon Fuel Management API',
-  build: 'heng-charoen-v60-fuel-control',
+  build: 'heng-charoen-v62-multi-branch',
   item_types: ITEM_TYPES,
-  endpoints: ['/health', '/auth/login', '/auth/me', '/deliveries', '/dashboard/stats', '/stocks/status', '/stocks', '/reports/monthly', '/notifications', '/users', '/vehicles'],
+  endpoints: ['/health', '/auth/login', '/auth/me', '/branches', '/deliveries', '/dashboard/stats', '/stocks/status', '/stocks', '/reports/monthly', '/notifications', '/users', '/vehicles'],
 }));
 
 router.get('/health', asyncHandler(async (req, res) => {
   await req.db.command({ ping: 1 });
-  jsonResponse(res, { success: true, message: 'Backend connected to MongoDB successfully', database: config.mongodb.db, build: 'heng-charoen-v60-fuel-control', time: nowIso() });
+  jsonResponse(res, { success: true, message: 'Backend connected to MongoDB successfully', database: config.mongodb.db, build: 'heng-charoen-v62-multi-branch', time: nowIso() });
 }));
 
 router.post('/auth/login', loginRateLimit, asyncHandler(async (req, res) => {
@@ -1412,7 +1569,7 @@ router.get('/item-types', (_req, res) => jsonResponse(res, { success: true, data
 router.get('/meta/fields', requireAuth, (_req, res) => jsonResponse(res, {
   success: true,
   data: {
-    collections: ['users', 'vehicles', 'deliveries', 'stocks', 'stock_movements', 'stock_audits', 'notifications'],
+    collections: ['branches', 'users', 'vehicles', 'deliveries', 'stocks', 'stock_movements', 'stock_audits', 'notifications'],
     item_types: ITEM_TYPES,
     delivery_labels: {
       work_date: 'ลงวันที่กำกับ', fill_date: 'วันที่เติม', fill_time: 'เวลาเติม', operation_type: 'ประเภทงาน', item_type: 'ประเภทน้ำมัน',
@@ -1426,17 +1583,111 @@ router.get('/meta/fields', requireAuth, (_req, res) => jsonResponse(res, {
   }
 }));
 
+router.get('/branches', requireAuth, asyncHandler(async (req, res) => {
+  const filter = (req.user.role || '') === 'owner'
+    ? {}
+    : { _id: oidOrNull(req.user.branch_id), is_active: { $ne: 0 } };
+  const rows = await req.db.collection('branches').find(filter, { sort: { is_active: -1, is_default: -1, name: 1 } }).toArray();
+  let data = rows.map(mongoToPlain);
+  if (!data.length) data = [mongoToPlain(await ensureDefaultBranch(req.db))];
+  jsonResponse(res, { success: true, data });
+}));
+
+router.post('/branches', requireAuth, requireOwner, asyncHandler(async (req, res) => {
+  const name = cleanString(req.body.name);
+  const code = cleanString(req.body.code).toUpperCase().replace(/[^A-Z0-9_-]/g, '').slice(0, 12);
+  if (!name || !code) return jsonResponse(res, { success: false, message: 'กรอกชื่อสาขาและรหัสสาขา' }, 422);
+  if (await req.db.collection('branches').findOne({ code })) return jsonResponse(res, { success: false, message: 'รหัสสาขานี้ถูกใช้งานแล้ว' }, 409);
+  const doc = {
+    name,
+    code,
+    address: cleanString(req.body.address),
+    phone: cleanString(req.body.phone),
+    note: cleanString(req.body.note),
+    is_default: 0,
+    is_active: 1,
+    created_at: nowIso(),
+    updated_at: nowIso(),
+  };
+  const result = await req.db.collection('branches').insertOne(doc);
+  const branch = mongoToPlain({ ...doc, _id: result.insertedId });
+  const fields = branchFields(branch);
+  for (const itemType of ITEM_TYPES) {
+    const defaults = DEFAULT_STOCK_SETTINGS[itemType] || DEFAULT_STOCK_SETTINGS['ดีเซล'];
+    await req.db.collection('stocks').updateOne(
+      { branch_id: fields.branch_id, item_type: itemType },
+      { $setOnInsert: { ...fields, item_type: itemType, balance_liters: 0, ...defaults, last_alert_status: 'ready', created_at: nowIso() }, $set: { updated_at: nowIso() } },
+      { upsert: true },
+    );
+  }
+  emitDataChanged('branches', 'create', { id: branch.id });
+  jsonResponse(res, { success: true, data: branch }, 201);
+}));
+
+router.put('/branches/:id', requireAuth, requireOwner, asyncHandler(async (req, res) => {
+  const oid = oidOrNull(req.params.id);
+  if (!oid) return jsonResponse(res, { success: false, message: 'รหัสสาขาไม่ถูกต้อง' }, 400);
+  const existing = await req.db.collection('branches').findOne({ _id: oid });
+  if (!existing) return jsonResponse(res, { success: false, message: 'ไม่พบสาขา' }, 404);
+  const name = cleanString(req.body.name) || existing.name;
+  const code = (cleanString(req.body.code) || existing.code).toUpperCase().replace(/[^A-Z0-9_-]/g, '').slice(0, 12);
+  const duplicate = await req.db.collection('branches').findOne({ code, _id: { $ne: oid } });
+  if (duplicate) return jsonResponse(res, { success: false, message: 'รหัสสาขานี้ถูกใช้งานแล้ว' }, 409);
+  const update = {
+    name,
+    code,
+    address: cleanString(req.body.address),
+    phone: cleanString(req.body.phone),
+    note: cleanString(req.body.note),
+    is_active: req.body.is_active === 0 || req.body.is_active === '0' ? 0 : 1,
+    updated_at: nowIso(),
+  };
+  const branchUpdate = { $set: update };
+  if (update.is_active === 1) branchUpdate.$unset = { deleted_at: '' };
+  await req.db.collection('branches').updateOne({ _id: oid }, branchUpdate);
+  const fields = branchFields({ id: String(oid), ...update });
+  for (const collectionName of ['stocks', 'stock_movements', 'stock_transactions', 'stock_audits', 'deliveries', 'notifications', 'users', 'vehicles']) {
+    await req.db.collection(collectionName).updateMany({ branch_id: String(oid) }, { $set: { branch_name: fields.branch_name, branch_code: fields.branch_code, updated_at: nowIso() } });
+  }
+  const fresh = await req.db.collection('branches').findOne({ _id: oid });
+  emitDataChanged('branches', 'update', { id: String(oid) });
+  jsonResponse(res, { success: true, data: mongoToPlain(fresh) });
+}));
+
+router.delete('/branches/:id', requireAuth, requireOwner, asyncHandler(async (req, res) => {
+  const oid = oidOrNull(req.params.id);
+  if (!oid) return jsonResponse(res, { success: false, message: 'รหัสสาขาไม่ถูกต้อง' }, 400);
+  const branch = await req.db.collection('branches').findOne({ _id: oid, is_active: { $ne: 0 } });
+  if (!branch) return jsonResponse(res, { success: false, message: 'ไม่พบสาขา' }, 404);
+  const activeCount = await req.db.collection('branches').countDocuments({ is_active: { $ne: 0 } });
+  if (activeCount <= 1) return jsonResponse(res, { success: false, message: 'ต้องมีสาขาที่ใช้งานอย่างน้อย 1 สาขา' }, 409);
+  const assignedUsers = await req.db.collection('users').countDocuments({ branch_id: String(oid), role: { $ne: 'owner' }, is_active: { $ne: 0 } });
+  if (assignedUsers > 0) return jsonResponse(res, { success: false, message: `ยังมีพนักงาน ${assignedUsers} คนอยู่ในสาขานี้ กรุณาย้ายพนักงานก่อนลบสาขา` }, 409);
+  await req.db.collection('branches').updateOne({ _id: oid }, { $set: { is_active: 0, is_default: 0, deleted_at: nowIso(), updated_at: nowIso() } });
+  if (branch.is_default) {
+    const replacement = await req.db.collection('branches').findOne({ _id: { $ne: oid }, is_active: { $ne: 0 } }, { sort: { created_at: 1 } });
+    if (replacement) await req.db.collection('branches').updateOne({ _id: replacement._id }, { $set: { is_default: 1, updated_at: nowIso() } });
+  }
+  emitDataChanged('branches', 'delete', { id: String(oid) });
+  jsonResponse(res, { success: true });
+}));
+
 router.get('/users', requireAuth, requireOwner, asyncHandler(async (req, res) => {
-  const users = await req.db.collection('users').find({}, { projection: { password_hash: 0, password: 0 }, sort: { created_at: -1 } }).toArray();
-  jsonResponse(res, { success: true, data: users.map(publicUser) });
+  const branch = await resolveBranchContext(req.db, req.user, req);
+  const users = await req.db.collection('users').find({ branch_id: branch.id }, { projection: { password_hash: 0, password: 0 }, sort: { created_at: -1 } }).toArray();
+  jsonResponse(res, { success: true, data: users.map(publicUser), branch });
 }));
 
 router.post('/users', requireAuth, requireOwner, asyncHandler(async (req, res) => {
+  const branch = await resolveBranchContext(req.db, req.user, req);
   const username = cleanString(req.body.username);
   const password = cleanString(req.body.password);
   if (!username || !password) return jsonResponse(res, { success: false, message: 'กรอก username และ password' }, 422);
+  const duplicate = await req.db.collection('users').findOne({ username });
+  if (duplicate) return jsonResponse(res, { success: false, message: 'ชื่อผู้ใช้นี้ถูกใช้งานแล้ว' }, 409);
   const passwordHash = await bcrypt.hash(password, 10);
   const doc = {
+    ...branchFields(branch),
     name: cleanString(req.body.name) || username,
     username,
     password_hash: passwordHash,
@@ -1452,35 +1703,80 @@ router.post('/users', requireAuth, requireOwner, asyncHandler(async (req, res) =
 }));
 
 router.put('/users/:id', requireAuth, requireOwner, asyncHandler(async (req, res) => {
+  const sourceBranch = await resolveBranchContext(req.db, req.user, req);
   const oid = oidOrNull(req.params.id);
   if (!oid) return jsonResponse(res, { success: false, message: 'รหัสผู้ใช้ไม่ถูกต้อง' }, 400);
+  const existing = await req.db.collection('users').findOne({ _id: oid, branch_id: sourceBranch.id });
+  if (!existing) return jsonResponse(res, { success: false, message: 'ไม่พบบัญชีในสาขาที่เลือก' }, 404);
+
+  let targetBranch = sourceBranch;
+  const requestedBranchId = cleanString(req.body.branch_id);
+  if (requestedBranchId && requestedBranchId !== sourceBranch.id) {
+    const found = await findBranch(req.db, requestedBranchId);
+    if (!found) return jsonResponse(res, { success: false, message: 'ไม่พบสาขาปลายทางหรือสาขาถูกปิดใช้งาน' }, 422);
+    targetBranch = mongoToPlain(found);
+  }
+
+  const username = cleanString(req.body.username) || existing.username;
+  const duplicate = await req.db.collection('users').findOne({ username, _id: { $ne: oid } });
+  if (duplicate) return jsonResponse(res, { success: false, message: 'ชื่อผู้ใช้นี้ถูกใช้งานแล้ว' }, 409);
+  const requestedActive = req.body.is_active === 0 || req.body.is_active === '0' ? 0 : 1;
+  const requestedRole = ['owner', 'employee'].includes(req.body.role) ? req.body.role : (existing.role || 'employee');
+  if (String(req.user.id) === String(oid) && requestedActive === 0) {
+    return jsonResponse(res, { success: false, message: 'ไม่สามารถปิดบัญชีที่กำลังใช้งานอยู่' }, 422);
+  }
+  if (String(req.user.id) === String(oid) && existing.role === 'owner' && requestedRole !== 'owner') {
+    return jsonResponse(res, { success: false, message: 'ไม่สามารถลดสิทธิ์บัญชีเจ้าของที่กำลังใช้งานอยู่' }, 422);
+  }
+
   const update = {
-    name: cleanString(req.body.name),
-    username: cleanString(req.body.username),
-    role: ['owner', 'employee'].includes(req.body.role) ? req.body.role : 'employee',
+    ...branchFields(targetBranch),
+    name: cleanString(req.body.name) || existing.name || username,
+    username,
+    role: requestedRole,
     phone: cleanString(req.body.phone),
-    is_active: req.body.is_active === 0 || req.body.is_active === '0' ? 0 : 1,
+    is_active: requestedActive,
     updated_at: nowIso(),
   };
-  Object.keys(update).forEach((key) => update[key] === '' && delete update[key]);
   if (cleanString(req.body.password)) update.password_hash = await bcrypt.hash(cleanString(req.body.password), 10);
-  await req.db.collection('users').updateOne({ _id: oid }, { $set: update });
+  await req.db.collection('users').updateOne({ _id: oid, branch_id: sourceBranch.id }, { $set: update });
+
+  if (targetBranch.id !== sourceBranch.id) {
+    await req.db.collection('vehicles').updateMany(
+      { branch_id: sourceBranch.id, user_id: String(oid) },
+      { $set: { user_id: '', updated_at: nowIso() } },
+    );
+  }
+
   const user = await findUserPublic(req.db, oid);
-  emitDataChanged('users', 'update', { id: String(oid) });
-  jsonResponse(res, { success: true, data: user });
+  emitDataChanged('users', 'update', { id: String(oid), branch_id: targetBranch.id, previous_branch_id: sourceBranch.id });
+  if (targetBranch.id !== sourceBranch.id) emitDataChanged('vehicles', 'refresh', { branch_id: sourceBranch.id, reason: 'user-transfer' });
+  jsonResponse(res, { success: true, data: user, branch: targetBranch });
 }));
 
 router.delete('/users/:id', requireAuth, requireOwner, asyncHandler(async (req, res) => {
+  const branch = await resolveBranchContext(req.db, req.user, req);
   const oid = oidOrNull(req.params.id);
   if (!oid) return jsonResponse(res, { success: false, message: 'รหัสผู้ใช้ไม่ถูกต้อง' }, 400);
-  await req.db.collection('users').updateOne({ _id: oid }, { $set: { is_active: 0, updated_at: nowIso() } });
-  emitDataChanged('users', 'delete', { id: String(oid) });
+  if (String(req.user.id) === String(oid)) return jsonResponse(res, { success: false, message: 'ไม่สามารถปิดบัญชีที่กำลังใช้งานอยู่' }, 422);
+  const result = await req.db.collection('users').updateOne(
+    { _id: oid, branch_id: branch.id },
+    { $set: { is_active: 0, updated_at: nowIso() } },
+  );
+  if (!result.matchedCount) return jsonResponse(res, { success: false, message: 'ไม่พบบัญชีในสาขาที่เลือก' }, 404);
+  emitDataChanged('users', 'delete', { id: String(oid), branch_id: branch.id });
   jsonResponse(res, { success: true });
 }));
 
 router.get('/vehicles/options', requireAuth, asyncHandler(async (req, res) => {
-  const filter = { is_active: { $ne: 0 } };
-  if ((req.user.role || '') !== 'owner') filter.user_id = String(req.user.id);
+  const branch = await resolveBranchContext(req.db, req.user, req);
+  const filter = { is_active: { $ne: 0 }, branch_id: branch.id };
+  if ((req.user.role || '') !== 'owner') filter.$or = [
+    { user_id: String(req.user.id) },
+    { user_id: '' },
+    { user_id: null },
+    { user_id: { $exists: false } },
+  ];
   const vehicles = await req.db.collection('vehicles').find(filter, {
     sort: { created_at: -1 },
     projection: { plate_no: 1, vehicle_no: 1, driver_name: 1, fuel_efficiency_km_per_liter: 1, user_id: 1 },
@@ -1490,7 +1786,8 @@ router.get('/vehicles/options', requireAuth, asyncHandler(async (req, res) => {
 }));
 
 router.get('/vehicles', requireAuth, requireOwner, asyncHandler(async (req, res) => {
-  const filter = { is_active: { $ne: 0 } };
+  const branch = await resolveBranchContext(req.db, req.user, req);
+  const filter = { is_active: { $ne: 0 }, branch_id: branch.id };
   const vehicles = await req.db.collection('vehicles').find(filter, { sort: { created_at: -1 } }).toArray();
   const enriched = await Promise.all(vehicles.map(async (vehicle) => {
     const v = mongoToPlain(vehicle);
@@ -1502,10 +1799,14 @@ router.get('/vehicles', requireAuth, requireOwner, asyncHandler(async (req, res)
 }));
 
 router.post('/vehicles', requireAuth, requireOwner, asyncHandler(async (req, res) => {
+  const branch = await resolveBranchContext(req.db, req.user, req);
   const plateNo = cleanString(req.body.plate_no);
   if (!plateNo) return jsonResponse(res, { success: false, message: 'กรอกเลขทะเบียนรถ' }, 422);
-  const userId = (req.user.role || '') === 'owner' && req.body.user_id ? String(req.body.user_id) : String(req.user.id);
+  const duplicate = await req.db.collection('vehicles').findOne({ branch_id: branch.id, plate_no: plateNo, is_active: { $ne: 0 } });
+  if (duplicate) return jsonResponse(res, { success: false, message: 'ทะเบียนรถนี้มีอยู่แล้วในสาขาที่เลือก' }, 409);
+  const userId = (req.user.role || '') === 'owner' ? cleanString(req.body.user_id) : String(req.user.id);
   const doc = {
+    ...branchFields(branch),
     user_id: userId,
     plate_no: plateNo,
     vehicle_no: cleanString(req.body.vehicle_no),
@@ -1522,51 +1823,62 @@ router.post('/vehicles', requireAuth, requireOwner, asyncHandler(async (req, res
 }));
 
 router.put('/vehicles/:id', requireAuth, requireOwner, asyncHandler(async (req, res) => {
+  const branch = await resolveBranchContext(req.db, req.user, req);
   const oid = oidOrNull(req.params.id);
   if (!oid) return jsonResponse(res, { success: false, message: 'รหัสรถไม่ถูกต้อง' }, 400);
-  const filter = { _id: oid, is_active: { $ne: 0 } };
+  const filter = { _id: oid, branch_id: branch.id, is_active: { $ne: 0 } };
   if ((req.user.role || '') !== 'owner') filter.user_id = String(req.user.id);
+  const plateNo = cleanString(req.body.plate_no);
+  if (!plateNo) return jsonResponse(res, { success: false, message: 'กรอกเลขทะเบียนรถ' }, 422);
+  const duplicate = await req.db.collection('vehicles').findOne({ _id: { $ne: oid }, branch_id: branch.id, plate_no: plateNo, is_active: { $ne: 0 } });
+  if (duplicate) return jsonResponse(res, { success: false, message: 'ทะเบียนรถนี้มีอยู่แล้วในสาขาที่เลือก' }, 409);
   const update = {
-    plate_no: cleanString(req.body.plate_no),
+    ...branchFields(branch),
+    plate_no: plateNo,
     vehicle_no: cleanString(req.body.vehicle_no),
     driver_name: cleanString(req.body.driver_name),
     fuel_efficiency_km_per_liter: round2(Math.max(0, toNumber(req.body.fuel_efficiency_km_per_liter, 0))),
     description: cleanString(req.body.description),
     updated_at: nowIso(),
   };
-  if ((req.user.role || '') === 'owner' && req.body.user_id) update.user_id = String(req.body.user_id);
-  Object.keys(update).forEach((key) => update[key] === '' && delete update[key]);
-  await req.db.collection('vehicles').updateOne(filter, { $set: update });
+  if ((req.user.role || '') === 'owner') update.user_id = cleanString(req.body.user_id);
+  Object.keys(update).forEach((key) => key !== 'user_id' && update[key] === '' && delete update[key]);
+  const result = await req.db.collection('vehicles').updateOne(filter, { $set: update });
+  if (!result.matchedCount) return jsonResponse(res, { success: false, message: 'ไม่พบรถในสาขาที่เลือก' }, 404);
   const vehicle = await findVehiclePublic(req.db, oid);
   emitDataChanged('vehicles', 'update', { id: String(oid) });
   jsonResponse(res, { success: true, data: vehicle });
 }));
 
 router.delete('/vehicles/:id', requireAuth, requireOwner, asyncHandler(async (req, res) => {
+  const branch = await resolveBranchContext(req.db, req.user, req);
   const oid = oidOrNull(req.params.id);
   if (!oid) return jsonResponse(res, { success: false, message: 'รหัสรถไม่ถูกต้อง' }, 400);
-  const filter = { _id: oid };
+  const filter = { _id: oid, branch_id: branch.id };
   if ((req.user.role || '') !== 'owner') filter.user_id = String(req.user.id);
-  await req.db.collection('vehicles').updateOne(filter, { $set: { is_active: 0, updated_at: nowIso() } });
-  emitDataChanged('vehicles', 'delete', { id: String(oid) });
+  const result = await req.db.collection('vehicles').updateOne(filter, { $set: { is_active: 0, updated_at: nowIso() } });
+  if (!result.matchedCount) return jsonResponse(res, { success: false, message: 'ไม่พบรถในสาขาที่เลือก' }, 404);
+  emitDataChanged('vehicles', 'delete', { id: String(oid), branch_id: branch.id });
   jsonResponse(res, { success: true });
 }));
 
 router.get('/deliveries', requireAuth, asyncHandler(async (req, res) => {
-  const filter = await buildDeliveryFilter(req.db, req.user, req.query);
+  const branch = await resolveBranchContext(req.db, req.user, req);
+  const filter = await buildDeliveryFilter(req.db, req.user, req.query, branch);
   const limit = Math.min(Math.max(Number(req.query.limit || 50), 1), 200);
   const rows = await req.db.collection('deliveries').find(filter, { sort: { work_date: -1, created_at: -1 }, limit }).toArray();
   const data = await Promise.all(rows.map((row) => enrichDelivery(req.db, row)));
-  jsonResponse(res, { success: true, data });
+  jsonResponse(res, { success: true, data, branch });
 }));
 
 router.post('/deliveries', requireAuth, uploadFields, asyncHandler(async (req, res) => {
-  const data = await normalizeDeliveryBody(req.db, req.body, req.files, req.user);
-  const vehicleId = await resolveVehicleId(req.db, req.user, req.body);
+  const branch = await resolveBranchContext(req.db, req.user, req);
+  const data = await normalizeDeliveryBody(req.db, req.body, req.files, req.user, {}, branch);
+  const vehicleId = await resolveVehicleId(req.db, req.user, req.body, branch);
   if (!vehicleId) return jsonResponse(res, { success: false, message: 'กรอกทะเบียนรถหรือเลือกรถให้ถูกต้อง' }, 422);
   data.vehicle_id = vehicleId;
   data.created_at = nowIso();
-  data.stock_synced = data.operation_type !== 'เติมสต๊อก';
+  data.stock_synced = !isStockIntakeOperation(data.operation_type);
   const result = await req.db.collection('deliveries').insertOne(data);
   if (data.stock_synced) await syncStockForDeliveryCreate(req.db, result.insertedId, data, String(req.user.id));
   await createAutoNotifications(req.db, String(result.insertedId), data);
@@ -1577,9 +1889,10 @@ router.post('/deliveries', requireAuth, uploadFields, asyncHandler(async (req, r
 }));
 
 router.get('/deliveries/:id', requireAuth, asyncHandler(async (req, res) => {
+  const branch = await resolveBranchContext(req.db, req.user, req);
   const oid = oidOrNull(req.params.id);
   if (!oid) return jsonResponse(res, { success: false, message: 'รหัสรายการไม่ถูกต้อง' }, 400);
-  const filter = { _id: oid };
+  const filter = { _id: oid, branch_id: branch.id };
   if ((req.user.role || '') !== 'owner') filter.user_id = String(req.user.id);
   const delivery = await req.db.collection('deliveries').findOne(filter);
   if (!delivery) return jsonResponse(res, { success: false, message: 'ไม่พบรายการ' }, 404);
@@ -1587,20 +1900,22 @@ router.get('/deliveries/:id', requireAuth, asyncHandler(async (req, res) => {
 }));
 
 router.put('/deliveries/:id', requireAuth, uploadFields, asyncHandler(async (req, res) => {
+  const branch = await resolveBranchContext(req.db, req.user, req);
   const oid = oidOrNull(req.params.id);
   if (!oid) return jsonResponse(res, { success: false, message: 'รหัสรายการไม่ถูกต้อง' }, 400);
-  const filter = { _id: oid };
+  const filter = { _id: oid, branch_id: branch.id };
   if ((req.user.role || '') !== 'owner') filter.user_id = String(req.user.id);
   const existing = await req.db.collection('deliveries').findOne(filter);
   if (!existing) return jsonResponse(res, { success: false, message: 'ไม่พบรายการ' }, 404);
-  const data = await normalizeDeliveryBody(req.db, req.body, req.files, req.user, existing);
-  const vehicleId = await resolveVehicleId(req.db, req.user, { ...req.body, vehicle_id: req.body.vehicle_id || existing.vehicle_id });
+  const data = await normalizeDeliveryBody(req.db, req.body, req.files, req.user, existing, branch);
+  const vehicleId = await resolveVehicleId(req.db, req.user, { ...req.body, vehicle_id: req.body.vehicle_id || existing.vehicle_id }, branch);
   if (vehicleId) {
     data.vehicle_id = vehicleId;
   }
-  data.stock_synced = existing.stock_synced === true || existing.stock_synced === 1;
+  const wasStockSynced = existing.stock_synced === true || existing.stock_synced === 1;
+  data.stock_synced = !isStockIntakeOperation(data.operation_type);
   await req.db.collection('deliveries').updateOne(filter, { $set: data });
-  if (data.stock_synced) await syncStockForDeliveryUpdate(req.db, oid, existing, data, String(req.user.id));
+  if (wasStockSynced || data.stock_synced) await syncStockForDeliveryUpdate(req.db, oid, existing, data, String(req.user.id));
   emitDataChanged('deliveries', 'update', { id: String(oid) });
   emitDataChanged('dashboard', 'refresh', { reason: 'delivery-update' });
   const fresh = await req.db.collection('deliveries').findOne({ _id: oid });
@@ -1609,9 +1924,10 @@ router.put('/deliveries/:id', requireAuth, uploadFields, asyncHandler(async (req
 
 
 router.delete('/deliveries/:id', requireAuth, asyncHandler(async (req, res) => {
+  const branch = await resolveBranchContext(req.db, req.user, req);
   const oid = oidOrNull(req.params.id);
   if (!oid) return jsonResponse(res, { success: false, message: 'รหัสรายการไม่ถูกต้อง' }, 400);
-  const filter = { _id: oid };
+  const filter = { _id: oid, branch_id: branch.id };
   if ((req.user.role || '') !== 'owner') filter.user_id = String(req.user.id);
   const existing = await req.db.collection('deliveries').findOne(filter);
   if (!existing) return jsonResponse(res, { success: false, message: 'ไม่พบรายการ' }, 404);
@@ -1623,20 +1939,25 @@ router.delete('/deliveries/:id', requireAuth, asyncHandler(async (req, res) => {
 }));
 
 router.get('/stocks/status', requireAuth, asyncHandler(async (req, res) => {
-  const rows = await req.db.collection('stocks').find({ item_type: { $in: ITEM_TYPES } }).toArray();
+  const branch = await resolveBranchContext(req.db, req.user, req);
+  const rows = await req.db.collection('stocks').find({ branch_id: branch.id, item_type: { $in: ITEM_TYPES } }).toArray();
   const map = new Map(rows.map((row) => [row.item_type, row]));
-  const data = ITEM_TYPES.map((itemType) => stockLevelInfo(map.get(itemType) || { item_type: itemType, balance_liters: 0 }));
-  jsonResponse(res, { success: true, data, updated_at: nowIso() });
+  const branchMeta = branchFields(branch);
+  const data = ITEM_TYPES.map((itemType) => stockLevelInfo(map.get(itemType) || { ...branchMeta, item_type: itemType, balance_liters: 0 }));
+  jsonResponse(res, { success: true, data, branch, updated_at: nowIso() });
 }));
 
 router.get('/stocks', requireAuth, requireOwner, asyncHandler(async (req, res) => {
-  const rows = await req.db.collection('stocks').find({ item_type: { $in: ITEM_TYPES } }).toArray();
+  const branch = await resolveBranchContext(req.db, req.user, req);
+  const rows = await req.db.collection('stocks').find({ branch_id: branch.id, item_type: { $in: ITEM_TYPES } }).toArray();
   const map = new Map(rows.map((row) => [row.item_type, row]));
-  const data = ITEM_TYPES.map((itemType) => stockLevelInfo(map.get(itemType) || { item_type: itemType, balance_liters: 0 }));
-  jsonResponse(res, { success: true, data });
+  const branchMeta = branchFields(branch);
+  const data = ITEM_TYPES.map((itemType) => stockLevelInfo(map.get(itemType) || { ...branchMeta, item_type: itemType, balance_liters: 0 }));
+  jsonResponse(res, { success: true, data, branch });
 }));
 
 router.put('/stocks/:itemType/settings', requireAuth, requireOwner, asyncHandler(async (req, res) => {
+  const branch = await resolveBranchContext(req.db, req.user, req);
   const itemType = normalizeItemType(req.params.itemType);
   if (!itemType) return jsonResponse(res, { success: false, message: 'ไม่พบประเภทน้ำมัน' }, 404);
   const defaults = DEFAULT_STOCK_SETTINGS[itemType];
@@ -1644,9 +1965,10 @@ router.put('/stocks/:itemType/settings', requireAuth, requireOwner, asyncHandler
   const reorder = round2(Math.max(0, Math.min(capacity, toNumber(req.body.reorder_level_liters, defaults.reorder_level_liters))));
   const critical = round2(Math.max(0, Math.min(reorder, toNumber(req.body.critical_level_liters, defaults.critical_level_liters))));
   await req.db.collection('stocks').updateOne(
-    { item_type: itemType },
+    { branch_id: branch.id, item_type: itemType },
     {
       $set: {
+        ...branchFields(branch),
         tank_name: cleanString(req.body.tank_name) || defaults.tank_name,
         capacity_liters: capacity,
         reorder_level_liters: reorder,
@@ -1657,31 +1979,33 @@ router.put('/stocks/:itemType/settings', requireAuth, requireOwner, asyncHandler
     },
     { upsert: true },
   );
-  const stock = await evaluateStockLevel(req.db, itemType, { forceNotification: false });
-  emitDataChanged('stocks', 'settings', { item_type: itemType });
-  emitDataChanged('dashboard', 'refresh', { reason: 'stock-settings' });
-  jsonResponse(res, { success: true, data: stock });
+  const stock = await evaluateStockLevel(req.db, itemType, branch.id, { forceNotification: false });
+  emitDataChanged('stocks', 'settings', { branch_id: branch.id, item_type: itemType });
+  emitDataChanged('dashboard', 'refresh', { branch_id: branch.id, reason: 'stock-settings' });
+  jsonResponse(res, { success: true, data: stock, branch });
 }));
 
 router.get('/stocks/audits', requireAuth, requireOwner, asyncHandler(async (req, res) => {
-  const rows = await req.db.collection('stock_audits').find({}, { sort: { audit_date: -1, created_at: -1 }, limit: 200 }).toArray();
-  jsonResponse(res, { success: true, data: rows.map(mongoToPlain) });
+  const branch = await resolveBranchContext(req.db, req.user, req);
+  const rows = await req.db.collection('stock_audits').find({ branch_id: branch.id }, { sort: { audit_date: -1, created_at: -1 }, limit: 200 }).toArray();
+  jsonResponse(res, { success: true, data: rows.map(mongoToPlain), branch });
 }));
 
 router.post('/stocks/audit', requireAuth, requireOwner, asyncHandler(async (req, res) => {
-  const itemType = normalizeItemType(req.body.item_type);
-  if (!itemType) return jsonResponse(res, { success: false, message: 'เลือกประเภทน้ำมันให้ถูกต้อง' }, 422);
-  const actualBalance = round2(Math.max(0, toNumber(req.body.actual_balance_liters, -1)));
-  if (toNumber(req.body.actual_balance_liters, -1) < 0) return jsonResponse(res, { success: false, message: 'กรอกยอดตรวจนับจริงตั้งแต่ 0 ลิตรขึ้นไป' }, 422);
-  const current = await req.db.collection('stocks').findOne({ item_type: itemType });
-  const systemBalance = round2(toNumber(current?.balance_liters, 0));
-  const variance = round2(actualBalance - systemBalance);
+  const branch = await resolveBranchContext(req.db, req.user, req);
+  const itemType = normalizeItemType(req.body.item_type || req.body.oil_type);
+  if (!itemType) return jsonResponse(res, { success: false, message: 'เลือกประเภทน้ำมัน' }, 422);
+  const actual = round2(Math.max(0, toNumber(req.body.actual_balance_liters, -1)));
+  if (actual < 0) return jsonResponse(res, { success: false, message: 'กรอกยอดตรวจจริง' }, 422);
+  const current = await req.db.collection('stocks').findOne({ branch_id: branch.id, item_type: itemType });
+  const system = round2(toNumber(current?.balance_liters, 0));
+  const variance = round2(actual - system);
   const auditDoc = {
+    ...branchFields(branch),
     item_type: itemType,
-    tank_name: cleanString(current?.tank_name) || DEFAULT_STOCK_SETTINGS[itemType].tank_name,
     audit_date: parseDateOrNull(req.body.audit_date) || today(),
-    system_balance_liters: systemBalance,
-    actual_balance_liters: actualBalance,
+    system_balance_liters: system,
+    actual_balance_liters: actual,
     variance_liters: variance,
     note: cleanString(req.body.note),
     user_id: String(req.user.id),
@@ -1690,71 +2014,75 @@ router.post('/stocks/audit', requireAuth, requireOwner, asyncHandler(async (req,
   const result = await req.db.collection('stock_audits').insertOne(auditDoc);
   if (variance !== 0) {
     await applyStockChange(req.db, {
+      ...branchFields(branch),
       item_type: itemType,
       change_liters: variance,
-      transaction_type: 'ตรวจนับสต๊อกจริง',
+      transaction_type: 'ปรับตามยอดตรวจนับจริง',
       user_id: String(req.user.id),
-      note: `ปรับจาก ${systemBalance.toFixed(2)} เป็น ${actualBalance.toFixed(2)} ลิตร ${auditDoc.note}`.trim(),
+      note: cleanString(req.body.note) || `ตรวจนับจริง ${actual} ลิตร`,
       transaction_date: auditDoc.audit_date,
     });
     await req.db.collection('notifications').insertOne({
+      ...branchFields(branch),
       kind: 'stock_audit',
       item_type: itemType,
-      title: variance < 0 ? `พบสต๊อก ${itemType} ขาด` : `พบสต๊อก ${itemType} เกิน`,
-      message: `ยอดระบบ ${systemBalance.toFixed(2)} ลิตร ตรวจจริง ${actualBalance.toFixed(2)} ลิตร ส่วนต่าง ${variance.toFixed(2)} ลิตร`,
-      type: variance < 0 ? 'danger' : 'warning',
+      title: `[${branch.name}] ตรวจนับสต๊อก ${itemType}`,
+      message: `ยอดระบบ ${system.toFixed(2)} ลิตร ยอดจริง ${actual.toFixed(2)} ลิตร ส่วนต่าง ${variance > 0 ? '+' : ''}${variance.toFixed(2)} ลิตร`,
+      type: variance < 0 ? 'warning' : 'info',
       is_read: 0,
       created_at: nowIso(),
     });
-    emitDataChanged('notifications', 'create', { kind: 'stock_audit', item_type: itemType });
+    emitDataChanged('notifications', 'create', { kind: 'stock_audit', branch_id: branch.id, item_type: itemType });
   }
-  emitDataChanged('stocks', 'audit', { item_type: itemType, audit_id: String(result.insertedId) });
-  emitDataChanged('dashboard', 'refresh', { reason: 'stock-audit' });
-  emitDataChanged('reports', 'refresh', { reason: 'stock-audit' });
-  jsonResponse(res, { success: true, data: mongoToPlain({ ...auditDoc, _id: result.insertedId }) });
+  emitDataChanged('stocks', 'audit', { branch_id: branch.id, item_type: itemType, audit_id: String(result.insertedId) });
+  emitDataChanged('dashboard', 'refresh', { branch_id: branch.id, reason: 'stock-audit' });
+  emitDataChanged('reports', 'refresh', { branch_id: branch.id, reason: 'stock-audit' });
+  jsonResponse(res, { success: true, data: mongoToPlain({ ...auditDoc, _id: result.insertedId }), branch });
 }));
 
 router.get('/stocks/transactions', requireAuth, requireOwner, asyncHandler(async (req, res) => {
-  const limit = Math.min(Math.max(Number(req.query.limit || 80), 1), 200);
-  const [currentRows, legacyRows] = await Promise.all([
-    req.db.collection('stock_movements').find({}, { sort: { created_at: -1 }, limit }).toArray(),
-    req.db.collection('stock_transactions').find({}, { sort: { created_at: -1 }, limit: 30 }).toArray().catch(() => []),
+  const branch = await resolveBranchContext(req.db, req.user, req);
+  const limit = Math.min(Math.max(Number(req.query.limit || 200), 1), 500);
+  const [movements, legacy] = await Promise.all([
+    req.db.collection('stock_movements').find({ branch_id: branch.id }, { sort: { created_at: -1 }, limit }).toArray(),
+    req.db.collection('stock_transactions').find({ branch_id: branch.id }, { sort: { created_at: -1 }, limit: 30 }).toArray().catch(() => []),
   ]);
-  const rows = [...currentRows, ...legacyRows]
-    .sort((a, b) => String(b.created_at || '').localeCompare(String(a.created_at || '')))
-    .slice(0, limit);
-  jsonResponse(res, { success: true, data: rows.map(mongoToPlain) });
+  const data = [...movements, ...legacy].map(mongoToPlain).sort((a, b) => String(b.created_at || '').localeCompare(String(a.created_at || ''))).slice(0, limit);
+  jsonResponse(res, { success: true, data, branch });
 }));
 
 router.post('/stocks/add', requireAuth, requireOwner, uploadFields, asyncHandler(async (req, res) => {
+  const branch = await resolveBranchContext(req.db, req.user, req);
   const itemType = normalizeItemType(req.body.item_type || req.body.oil_type);
-  if (!itemType) return jsonResponse(res, { success: false, message: 'เลือกประเภทให้ถูกต้อง: ดีเซล, น้ำมันเครื่อง, แอดบลู' }, 422);
-  const qty = toNumber(req.body.quantity_liters || req.body.liters, 0);
-  if (qty <= 0) return jsonResponse(res, { success: false, message: 'กรอกจำนวนลิตรให้มากกว่า 0' }, 422);
-  const photos = await extractPhotoFields(req.db, req.files);
+  const qty = round2(Math.max(0, toNumber(req.body.quantity_liters || req.body.liters, 0)));
+  if (!itemType || qty <= 0) return jsonResponse(res, { success: false, message: 'เลือกประเภทและกรอกจำนวนลิตรที่เติม' }, 422);
+  const photos = await extractPhotoFields(req.db, req.files || {}, {});
   await applyStockChange(req.db, {
+    ...branchFields(branch),
     item_type: itemType,
     change_liters: qty,
-    transaction_type: 'เติมสต๊อก',
+    transaction_type: 'เติมเข้าสต๊อก',
     user_id: String(req.user.id),
     note: cleanString(req.body.note),
-    transaction_date: req.body.transaction_date || req.body.fill_date || today(),
+    transaction_date: req.body.transaction_date || today(),
     amount_baht: req.body.amount_baht,
-    bill_no: req.body.bill_no || req.body.oil_bill_no || req.body.adblue_bill_no,
+    bill_no: req.body.bill_no,
     supplier_name: req.body.supplier_name,
     photo: photos.bill_photo || photos.oil_photo || photos.document_photo || photos.stock_photo || '',
   });
-  const stock = await req.db.collection('stocks').findOne({ item_type: itemType });
-  emitDataChanged('stocks', 'change', { item_type: itemType });
-  emitDataChanged('dashboard', 'refresh', { reason: 'stock-change' });
-  jsonResponse(res, { success: true, data: mongoToPlain(stock) });
+  const stock = await req.db.collection('stocks').findOne({ branch_id: branch.id, item_type: itemType });
+  emitDataChanged('stocks', 'change', { branch_id: branch.id, item_type: itemType });
+  emitDataChanged('dashboard', 'refresh', { branch_id: branch.id, reason: 'stock-change' });
+  jsonResponse(res, { success: true, data: stockLevelInfo(stock), branch });
 }));
 
 router.post('/stocks/adjust', requireAuth, requireOwner, asyncHandler(async (req, res) => {
+  const branch = await resolveBranchContext(req.db, req.user, req);
   const itemType = normalizeItemType(req.body.item_type || req.body.oil_type);
   const qty = toNumber(req.body.change_liters, 0);
   if (!itemType || qty === 0) return jsonResponse(res, { success: false, message: 'เลือกประเภทและกรอกจำนวนปรับสต๊อก' }, 422);
   await applyStockChange(req.db, {
+    ...branchFields(branch),
     item_type: itemType,
     change_liters: qty,
     transaction_type: 'ปรับสต๊อก',
@@ -1762,14 +2090,15 @@ router.post('/stocks/adjust', requireAuth, requireOwner, asyncHandler(async (req
     note: cleanString(req.body.note),
     transaction_date: req.body.transaction_date || today(),
   });
-  const stock = await req.db.collection('stocks').findOne({ item_type: itemType });
-  emitDataChanged('stocks', 'change', { item_type: itemType });
-  emitDataChanged('dashboard', 'refresh', { reason: 'stock-change' });
-  jsonResponse(res, { success: true, data: mongoToPlain(stock) });
+  const stock = await req.db.collection('stocks').findOne({ branch_id: branch.id, item_type: itemType });
+  emitDataChanged('stocks', 'change', { branch_id: branch.id, item_type: itemType });
+  emitDataChanged('dashboard', 'refresh', { branch_id: branch.id, reason: 'stock-change' });
+  jsonResponse(res, { success: true, data: stockLevelInfo(stock), branch });
 }));
 
 router.get('/dashboard/stats', requireAuth, requireOwner, asyncHandler(async (req, res) => {
-  const filter = await buildDeliveryFilter(req.db, req.user, req.query);
+  const branch = await resolveBranchContext(req.db, req.user, req);
+  const filter = await buildDeliveryFilter(req.db, req.user, req.query, branch);
   const rows = await req.db.collection('deliveries').find(filter, { sort: { work_date: -1, created_at: -1 }, limit: 2000 }).toArray();
   const enriched = await Promise.all(rows.map((row) => enrichDelivery(req.db, row)));
   const totalLiters = enriched.reduce((sum, row) => sum + toNumber(row.quantity_liters, 0), 0);
@@ -1781,8 +2110,8 @@ router.get('/dashboard/stats', requireAuth, requireOwner, asyncHandler(async (re
   const overStandardCost = enriched.reduce((sum, row) => sum + Math.max(0, toNumber(row.fuel_variance_baht, 0)), 0);
   const totalStoneWeight = enriched.reduce((sum, row) => sum + toNumber(row.cargo_stone_weight, 0), 0);
   const totalSandWeight = enriched.reduce((sum, row) => sum + toNumber(row.cargo_sand_weight, 0), 0);
-  const stocks = await req.db.collection('stocks').find({ item_type: { $in: ITEM_TYPES } }).toArray();
-  const unreadNotifications = await req.db.collection('notifications').countDocuments({ is_read: { $ne: 1 } });
+  const stocks = await req.db.collection('stocks').find({ branch_id: branch.id, item_type: { $in: ITEM_TYPES } }).toArray();
+  const unreadNotifications = await req.db.collection('notifications').countDocuments({ branch_id: branch.id, is_read: { $ne: 1 } });
   const byDayMap = new Map();
   for (const row of enriched) {
     const key = parseDateOrNull(row.fill_date || row.work_date) || 'ไม่ระบุ';
@@ -1800,6 +2129,7 @@ router.get('/dashboard/stats', requireAuth, requireOwner, asyncHandler(async (re
   jsonResponse(res, {
     success: true,
     data: {
+      branch,
       total_trips: enriched.reduce((sum, row) => sum + deliveryJobCount(row), 0),
       total_records: enriched.length,
       total_liters: round2(totalLiters),
@@ -1830,12 +2160,14 @@ router.get('/dashboard/stats', requireAuth, requireOwner, asyncHandler(async (re
 }));
 
 router.get('/reports/monthly', requireAuth, requireOwner, asyncHandler(async (req, res) => {
+  const branch = await resolveBranchContext(req.db, req.user, req);
   const requestedMonth = /^\d{4}-\d{2}$/.test(cleanString(req.query.month)) ? cleanString(req.query.month) : monthFromDate(today());
   const from = `${requestedMonth}-01`;
   const [year, month] = requestedMonth.split('-').map(Number);
   const nextMonthDate = new Date(Date.UTC(year, month, 1));
   const toExclusive = nextMonthDate.toISOString().slice(0, 10);
   const rows = await req.db.collection('deliveries').find({
+    branch_id: branch.id,
     $or: [
       { report_month: requestedMonth },
       { fill_date: { $gte: from, $lt: toExclusive } },
@@ -1843,8 +2175,8 @@ router.get('/reports/monthly', requireAuth, requireOwner, asyncHandler(async (re
     ],
   }, { sort: { work_date: 1, created_at: 1 }, limit: 5000 }).toArray();
   const enriched = await Promise.all(rows.map((row) => enrichDelivery(req.db, row)));
-  const movements = await req.db.collection('stock_movements').find({ transaction_date: { $gte: from, $lt: toExclusive } }).toArray();
-  const audits = await req.db.collection('stock_audits').find({ audit_date: { $gte: from, $lt: toExclusive } }).toArray();
+  const movements = await req.db.collection('stock_movements').find({ branch_id: branch.id, transaction_date: { $gte: from, $lt: toExclusive } }).toArray();
+  const audits = await req.db.collection('stock_audits').find({ branch_id: branch.id, audit_date: { $gte: from, $lt: toExclusive } }).toArray();
 
   const summary = enriched.reduce((acc, row) => {
     const actual = toNumber(row.quantity_liters, 0);
@@ -1915,6 +2247,7 @@ router.get('/reports/monthly', requireAuth, requireOwner, asyncHandler(async (re
   jsonResponse(res, {
     success: true,
     data: {
+      branch,
       month: requestedMonth,
       period: { from, to_exclusive: toExclusive },
       generated_at: nowIso(),
@@ -1930,14 +2263,16 @@ router.get('/reports/monthly', requireAuth, requireOwner, asyncHandler(async (re
 }));
 
 router.get('/notifications', requireAuth, requireOwner, asyncHandler(async (req, res) => {
-  const rows = await req.db.collection('notifications').find({}, { sort: { created_at: -1 }, limit: 80 }).toArray();
-  jsonResponse(res, { success: true, data: rows.map(mongoToPlain) });
+  const branch = await resolveBranchContext(req.db, req.user, req);
+  const rows = await req.db.collection('notifications').find({ branch_id: branch.id }, { sort: { created_at: -1 }, limit: 80 }).toArray();
+  jsonResponse(res, { success: true, data: rows.map(mongoToPlain), branch });
 }));
 
 router.patch('/notifications/:id/read', requireAuth, requireOwner, asyncHandler(async (req, res) => {
+  const branch = await resolveBranchContext(req.db, req.user, req);
   const oid = oidOrNull(req.params.id);
   if (!oid) return jsonResponse(res, { success: false, message: 'รหัสแจ้งเตือนไม่ถูกต้อง' }, 400);
-  await req.db.collection('notifications').updateOne({ _id: oid }, { $set: { is_read: 1, updated_at: nowIso() } });
+  await req.db.collection('notifications').updateOne({ _id: oid, branch_id: branch.id }, { $set: { is_read: 1, updated_at: nowIso() } });
   emitDataChanged('notifications', 'read', { id: String(oid) });
   jsonResponse(res, { success: true });
 }));
@@ -1951,5 +2286,5 @@ app.use((err, _req, res, _next) => {
 });
 
 httpServer.listen(config.port, () => {
-  console.log(`Heng Charoen Phuetphon Fuel Management API fuel-control-v60 running on port ${config.port}`);
+  console.log(`Heng Charoen Phuetphon Fuel Management API multi-branch-v62 running on port ${config.port}`);
 });

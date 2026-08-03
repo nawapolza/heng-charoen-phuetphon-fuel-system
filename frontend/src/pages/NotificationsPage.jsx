@@ -2,6 +2,7 @@ import { Bell, CheckCircle2 } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import { api } from '../api.js';
 import Loading from '../components/Loading.jsx';
+import BranchScopeBar from '../components/BranchScopeBar.jsx';
 import { useRealtime } from '../hooks/useRealtime.js';
 import { alertError, toastSuccess } from '../utils/alerts.js';
 import { datetime } from '../utils/format.js';
@@ -31,13 +32,14 @@ export default function NotificationsPage() {
   return (
     <div className="page-shell">
       <div className="page-orbit">
-        <span className="page-orbit-code">06 / NOTIFICATION CENTER</span>
+        <span className="page-orbit-code">10 / NOTIFICATION CENTER</span>
         <div>
           <h1 className="page-title">แจ้งเตือนระบบ</h1>
           <p className="page-subtitle">รวมสัญญาณที่ควรตรวจสอบและเหตุการณ์สำคัญไว้ในลำดับเดียว</p>
         </div>
         <span className="page-orbit-signal">REALTIME</span>
       </div>
+      <BranchScopeBar label="ศูนย์แจ้งเตือนของสาขา" detail="แจ้งเตือนสต๊อกต่ำและรายการผิดปกติถูกแยกตามสาขา" />
       <div className="grid gap-3 md:grid-cols-3">
         <div className="card p-5"><p className="text-sm font-black text-slate-500">แจ้งเตือนทั้งหมด</p><p className="mt-2 text-4xl font-black text-slate-950">{rows.length}</p></div>
         <div className="card p-5"><p className="text-sm font-black text-slate-500">ยังไม่อ่าน</p><p className="mt-2 text-4xl font-black text-red-600">{unread}</p></div>

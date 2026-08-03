@@ -4,6 +4,7 @@ import { api } from '../api.js';
 import DeliveryForm from '../components/DeliveryForm.jsx';
 import DeliveryReceiptCard from '../components/DeliveryReceiptCard.jsx';
 import Loading from '../components/Loading.jsx';
+import BranchScopeBar from '../components/BranchScopeBar.jsx';
 import { useRealtime } from '../hooks/useRealtime.js';
 import { alertError, confirmDanger, toastSuccess } from '../utils/alerts.js';
 
@@ -65,12 +66,13 @@ export default function DeliveriesPage() {
 
   return (
     <div className="page-shell">
+      <BranchScopeBar label="รายการของสาขา" detail="การค้นหา แก้ไข และลบ จะแสดงเฉพาะรายการของสาขาที่เลือก" />
       <div className="history-console">
         <div className="history-console-head">
           <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
             <div>
               <h1 className="text-2xl font-black tracking-tight md:text-3xl">รายการงานน้ำมัน</h1>
-              <p className="mt-2 max-w-3xl text-sm font-semibold leading-6 text-blue-100">ค้นหาใบสรุปย้อนหลังแบบอ่านง่าย</p>
+              <p className="mt-2 max-w-3xl text-sm font-semibold leading-6 text-blue-100">ค้นหาใบสรุปย้อนหลังของสาขาที่เลือกแบบอ่านง่าย</p>
             </div>
             <div className="rounded-2xl bg-white/10 px-4 py-3 text-sm font-black backdrop-blur">
               ทั้งหมด {rows.length} รายการ · หน้า {page}/{totalPages}

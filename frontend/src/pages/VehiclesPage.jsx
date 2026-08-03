@@ -2,6 +2,7 @@ import { Car, Edit, Gauge, ShieldCheck, Trash2, UserRound } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import { api } from '../api.js';
 import Loading from '../components/Loading.jsx';
+import BranchScopeBar from '../components/BranchScopeBar.jsx';
 import { useRealtime } from '../hooks/useRealtime.js';
 import { alertError, confirmDanger, toastSuccess } from '../utils/alerts.js';
 
@@ -39,7 +40,6 @@ export default function VehiclesPage() {
     }
     try {
       const payload = { ...form, fuel_efficiency_km_per_liter: rate.toFixed(2) };
-      if (!payload.user_id) delete payload.user_id;
       if (editing) await api.updateVehicle(editing.id, payload);
       else await api.createVehicle(payload);
       toastSuccess(editing ? 'แก้ไขรถ/คนขับแล้ว' : 'เพิ่มรถ/คนขับแล้ว');
@@ -81,13 +81,15 @@ export default function VehiclesPage() {
   return (
     <div className="page-shell">
       <div className="page-orbit">
-        <span className="page-orbit-code">04 / VEHICLE & DRIVER</span>
+        <span className="page-orbit-code">08 / VEHICLE & DRIVER</span>
         <div>
           <h1 className="page-title">รถ / คนขับรถ</h1>
           <p className="page-subtitle">ตั้งอัตราประจำรถเพียงครั้งเดียว ระบบจะนำไปคำนวณจำนวนลิตรจากระยะทางให้อัตโนมัติในทุกเที่ยว</p>
         </div>
         <span className="page-orbit-signal">AUTO RATE</span>
       </div>
+
+      <BranchScopeBar label="ทะเบียนรถของสาขา" detail="รถ คนขับ และอัตราสิ้นเปลืองจะไม่ปะปนกับสาขาอื่น" />
 
       <form onSubmit={submit} className="card p-4 md:p-5">
         <h2 className="mb-4 flex items-center gap-2 text-lg font-black"><Car size={20} /> {editing ? 'แก้ไขรถ / คนขับ' : 'เพิ่มรถ / คนขับ'}</h2>
@@ -112,7 +114,7 @@ export default function VehiclesPage() {
               <option value="">ไม่ระบุ / ใช้ทั่วไป</option>
               {users.map((u) => <option key={u.id} value={u.id}>{u.name || u.username} ({u.role})</option>)}
             </select>
-            <p className="hint mt-1">ช่วยให้พนักงานเห็นตัวเลือกทะเบียนของตัวเองตอนบันทึก</p>
+            <p className="hint mt-1">รถที่ไม่ผูกพนักงานจะเป็นรถใช้ทั่วไป และพนักงานในสาขาเลือกได้ตอนบันทึก</p>
           </label>
           <div className="vehicle-form-link md:col-span-5">
             <LinkStatus active={Boolean(form.plate_no && form.fuel_efficiency_km_per_liter)} />

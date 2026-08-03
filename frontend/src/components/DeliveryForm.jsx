@@ -1,8 +1,9 @@
-import { ArrowDownRight, Banknote, CalendarDays, Camera, CheckCircle2, ChevronDown, ChevronUp, ClipboardCopy, ClipboardList, Clock3, Droplets, FileText, Gauge, Link2, PackageCheck, Plus, RotateCcw, Route, Save, ShieldCheck, Trash2, X } from 'lucide-react';
+import { ArrowDownRight, Banknote, Building2, CalendarDays, Camera, CheckCircle2, ChevronDown, ChevronUp, ClipboardCopy, ClipboardList, Clock3, Droplets, FileText, Gauge, Link2, PackageCheck, Plus, RotateCcw, Route, Save, ShieldCheck, Trash2, X } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { api, uploadUrl } from '../api.js';
 import CaptureReceiptModal from './CaptureReceiptModal.jsx';
 import { useAuth } from '../contexts/AuthContext.jsx';
+import { useBranch } from '../contexts/BranchContext.jsx';
 import { alertError, confirmAction, toastInfo, toastSuccess } from '../utils/alerts.js';
 import { ITEM_TYPES, currentTime, money, number, parseDecimal, roundDecimal, today } from '../utils/format.js';
 
@@ -340,6 +341,7 @@ function roundMoneyLike(value, digits = 2) {
 
 export default function DeliveryForm({ initialData = null, onSaved = null }) {
   const { user } = useAuth();
+  const { activeBranch } = useBranch();
   const [form, setForm] = useState(blank);
   const [files, setFiles] = useState({});
   const [vehicles, setVehicles] = useState([]);
@@ -352,8 +354,8 @@ export default function DeliveryForm({ initialData = null, onSaved = null }) {
   const draftKey = useMemo(() => {
     const deviceId = getDeviceId();
     const userKey = user?.id || user?.username || 'shared-user';
-    return `${DRAFT_VERSION}:${deviceId}:${userKey}`;
-  }, [user?.id, user?.username]);
+    return `${DRAFT_VERSION}:${activeBranch?.id || 'branch'}:${deviceId}:${userKey}`;
+  }, [activeBranch?.id, user?.id, user?.username]);
 
   const jobsSummary = useMemo(() => summarizeJobs(form.jobs), [form.jobs]);
 
@@ -798,6 +800,8 @@ export default function DeliveryForm({ initialData = null, onSaved = null }) {
               </div>
             </div>
           </div>
+
+          <div className="form-branch-badge"><Building2 size={18} /><span><small>รายการนี้จะบันทึกเข้าสาขา</small><strong>{activeBranch?.name || 'กำลังเลือกสาขา'}</strong></span><em>{activeBranch?.code || '-'}</em></div>
 
           <div className="form-hero-summary" aria-label="สรุปข้อมูลที่กรอก">
             <Metric label="ระยะทางรวมทุกงาน" value={effectiveDistance ? `${number(effectiveDistance, 2)} กม.` : '-'} />

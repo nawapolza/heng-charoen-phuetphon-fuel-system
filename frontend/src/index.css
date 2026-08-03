@@ -6009,3 +6009,127 @@ body {
   .monthly-audit-table th,
   .monthly-audit-table td { padding: 5px; font-size: 8px; white-space: normal; }
 }
+
+/* =========================================================
+   V62 MULTI-BRANCH OPERATIONS
+   ========================================================= */
+.nova-branch-panel {
+  display: grid;
+  gap: .48rem;
+  margin: .1rem 0 .65rem;
+  border: 1px solid rgba(255,255,255,.08);
+  border-radius: 1rem;
+  background: rgba(255,255,255,.045);
+  padding: .68rem;
+}
+.nova-branch-panel-label { display: flex; align-items: center; gap: .38rem; color: rgba(255,255,255,.48); font-size: .6rem; font-weight: 900; letter-spacing: .055em; }
+.branch-global-select {
+  width: 100%; min-width: 11rem; border: 1px solid #d9e5f3; border-radius: .75rem; background: #fff;
+  padding: .62rem 2rem .62rem .72rem; color: #173452; font-size: .72rem; font-weight: 900; outline: none;
+}
+.nova-branch-panel .branch-global-select { min-width: 0; border-color: rgba(66,232,198,.18); background: rgba(5,20,31,.76); color: #fff; }
+.branch-global-select:focus { border-color: #2b75e2; box-shadow: 0 0 0 3px rgba(43,117,226,.12); }
+.branch-global-select.is-compact { font-size: .68rem; }
+.branch-readonly-chip { display: flex; min-width: 10rem; align-items: center; justify-content: space-between; gap: .6rem; border: 1px solid #dce7f3; border-radius: .75rem; background: #f8fbff; padding: .52rem .68rem; }
+.branch-readonly-chip strong { overflow: hidden; color: #173452; font-size: .69rem; font-weight: 950; text-overflow: ellipsis; white-space: nowrap; }
+.branch-readonly-chip small { flex: none; border-radius: 999px; background: #eaf2ff; padding: .18rem .42rem; color: #2164b9; font-size: .54rem; font-weight: 950; }
+.nova-branch-panel .branch-readonly-chip { min-width: 0; border-color: rgba(255,255,255,.08); background: rgba(5,20,31,.68); }
+.nova-branch-panel .branch-readonly-chip strong { color: #fff; }
+.nova-branch-panel .branch-readonly-chip small { background: rgba(66,232,198,.12); color: #8ff1d8; }
+.nova-top-branch { display: flex; align-items: center; gap: .4rem; color: #4f6782; }
+.nova-top-branch .branch-global-select { max-width: 15rem; }
+.nova-top-branch .branch-readonly-chip { min-width: 9rem; }
+.nova-sheet-branch { display: grid; gap: .48rem; margin-top: .75rem; border: 1px solid rgba(255,255,255,.08); border-radius: 1rem; background: rgba(255,255,255,.04); padding: .72rem; }
+.nova-sheet-branch > span { display: flex; align-items: center; gap: .42rem; color: rgba(255,255,255,.6); font-size: .65rem; font-weight: 900; }
+.nova-sheet-branch .branch-global-select { border-color: rgba(255,255,255,.12); background: #102638; color: #fff; }
+.nova-sheet-branch .branch-readonly-chip { border-color: rgba(255,255,255,.1); background: #102638; }
+.nova-sheet-branch .branch-readonly-chip strong { color: #fff; }
+
+.branch-scope-bar,
+.stock-branch-banner { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: .82rem .95rem; border-color: #dce8f5; background: linear-gradient(135deg,#f8fbff,#f3f9ff); }
+.branch-scope-main,
+.stock-branch-main { display: flex; min-width: 0; align-items: center; gap: .72rem; }
+.branch-scope-main > span,
+.stock-branch-icon { display: grid; width: 2.65rem; height: 2.65rem; flex: none; place-items: center; border-radius: .84rem; background: #1761ce; color: #fff; box-shadow: 0 8px 20px rgba(23,97,206,.2); }
+.branch-scope-main div,
+.stock-branch-main div { min-width: 0; }
+.branch-scope-main small,
+.stock-branch-main small { display: block; color: #7d8da1; font-size: .58rem; font-weight: 900; letter-spacing: .045em; }
+.branch-scope-main strong,
+.stock-branch-main strong { display: block; margin-top: .08rem; overflow: hidden; color: #153552; font-size: .88rem; font-weight: 950; text-overflow: ellipsis; white-space: nowrap; }
+.stock-branch-main p { margin-top: .12rem; color: #708298; font-size: .62rem; font-weight: 750; }
+.branch-scope-detail,
+.stock-branch-rule { display: flex; align-items: center; gap: .42rem; border-radius: .72rem; background: #eaf7f3; padding: .52rem .65rem; color: #08745b; font-size: .62rem; font-weight: 850; }
+.branch-scope-detail em { border-left: 1px solid rgba(8,116,91,.2); padding-left: .52rem; font-style: normal; font-weight: 950; }
+
+.branch-overview-strip { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: .7rem; padding: .8rem; }
+.branch-overview-strip > div { display: flex; align-items: center; gap: .65rem; border-radius: .85rem; background: #f5f8fc; padding: .8rem; color: #2466bd; }
+.branch-overview-strip span { display: grid; gap: .08rem; }
+.branch-overview-strip small { color: #7e8da1; font-size: .58rem; font-weight: 850; }
+.branch-overview-strip strong { color: #173552; font-size: .8rem; font-weight: 950; }
+.branch-layout-grid { display: grid; grid-template-columns: minmax(320px,.78fr) minmax(0,1.22fr); align-items: start; gap: .9rem; }
+.branch-editor-card { position: sticky; top: 5.5rem; overflow: hidden; padding: .95rem; }
+.branch-editor-head { display: flex; align-items: flex-start; justify-content: space-between; gap: .75rem; border-bottom: 1px solid #edf1f6; padding-bottom: .8rem; }
+.branch-editor-head > div { display: flex; align-items: flex-start; gap: .62rem; }
+.branch-editor-head > div > span { display: grid; width: 2.5rem; height: 2.5rem; flex: none; place-items: center; border-radius: .8rem; background: #eaf2ff; color: #1761ce; }
+.branch-editor-head h2 { color: #173552; font-size: .88rem; font-weight: 950; }
+.branch-editor-head p { margin-top: .16rem; color: #718299; font-size: .61rem; font-weight: 750; line-height: 1.45; }
+.branch-form-grid { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: .68rem; margin: .85rem 0; }
+.branch-field { display: grid; gap: .28rem; }
+.branch-field > span { color: #516a85; font-size: .61rem; font-weight: 900; }
+.branch-field textarea { min-height: 5.2rem; resize: vertical; }
+.branch-field-wide { grid-column: 1 / -1; }
+.branch-card-list { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: .75rem; }
+.branch-card { display: grid; gap: .75rem; padding: .9rem; transition: border-color .18s ease, transform .18s ease, box-shadow .18s ease; }
+.branch-card:hover { transform: translateY(-2px); }
+.branch-card.is-selected { border-color: #75a9ec; box-shadow: 0 14px 34px rgba(23,97,206,.12), inset 4px 0 0 #1761ce; }
+.branch-card.is-disabled { opacity: .62; filter: grayscale(.25); }
+.branch-card-top { display: flex; align-items: flex-start; gap: .65rem; }
+.branch-card-icon { display: grid; width: 2.7rem; height: 2.7rem; flex: none; place-items: center; border-radius: .85rem; background: #edf4ff; color: #1761ce; }
+.branch-card-title { min-width: 0; flex: 1; }
+.branch-card-title > div { display: flex; align-items: center; justify-content: space-between; gap: .5rem; }
+.branch-card-title h3 { overflow: hidden; color: #183654; font-size: .85rem; font-weight: 950; text-overflow: ellipsis; white-space: nowrap; }
+.branch-card-title span { flex: none; border-radius: 999px; background: #edf3fa; padding: .2rem .45rem; color: #55708e; font-size: .55rem; font-weight: 950; }
+.branch-card-title p { margin-top: .15rem; color: #8190a2; font-size: .58rem; font-weight: 800; }
+.branch-card-info { display: grid; gap: .38rem; border-block: 1px solid #edf1f5; padding-block: .6rem; }
+.branch-card-info p { display: flex; align-items: flex-start; gap: .4rem; color: #60758f; font-size: .61rem; font-weight: 750; line-height: 1.45; }
+.branch-card-info svg { flex: none; margin-top: .08rem; color: #2b75e2; }
+.branch-card-actions { display: flex; flex-wrap: wrap; gap: .42rem; }
+.branch-card-actions button { min-height: 2.35rem; flex: 1 1 auto; justify-content: center; padding: .45rem .65rem; font-size: .62rem; }
+.btn-danger-soft { display: inline-flex; align-items: center; gap: .35rem; border: 1px solid #fecdd3; border-radius: .72rem; background: #fff1f2; padding: .55rem .72rem; color: #be123c; font-size: .7rem; font-weight: 900; }
+.btn-danger-soft:hover { background: #ffe4e6; }
+
+.stock-section-nav { display: flex; flex-wrap: wrap; gap: .42rem; border: 1px solid #e3ebf4; border-radius: .95rem; background: #fff; padding: .5rem; }
+.stock-section-nav a { border-radius: .66rem; background: #f4f7fb; padding: .45rem .65rem; color: #55708c; font-size: .61rem; font-weight: 900; text-decoration: none; }
+.stock-section-nav a:hover { background: #eaf2ff; color: #1761ce; }
+#stock-intake,#stock-audit,#stock-settings,#stock-history { scroll-margin-top: 6rem; }
+.form-branch-badge { display: flex; min-width: 14rem; align-items: center; gap: .52rem; border: 1px solid rgba(255,255,255,.14); border-radius: .85rem; background: rgba(255,255,255,.09); padding: .55rem .65rem; color: #fff; }
+.form-branch-badge > span { display: grid; min-width: 0; flex: 1; }
+.form-branch-badge small { color: rgba(255,255,255,.56); font-size: .54rem; font-weight: 850; }
+.form-branch-badge strong { overflow: hidden; margin-top: .05rem; font-size: .7rem; font-weight: 950; text-overflow: ellipsis; white-space: nowrap; }
+.form-branch-badge em { border-radius: 999px; background: rgba(185,244,91,.14); padding: .2rem .42rem; color: #d8ff9f; font-size: .54rem; font-style: normal; font-weight: 950; }
+.monthly-print-header small { display: block; margin-top: .1rem; color: #66788e; font-size: .6rem; font-weight: 800; }
+
+@media (max-width: 1180px) {
+  .nova-top-branch .branch-global-select { max-width: 11rem; }
+  .branch-layout-grid { grid-template-columns: 1fr; }
+  .branch-editor-card { position: static; }
+}
+@media (max-width: 920px) {
+  .branch-scope-bar,.stock-branch-banner { align-items: stretch; flex-direction: column; }
+  .branch-scope-detail,.stock-branch-rule { justify-content: space-between; }
+  .branch-card-list { grid-template-columns: 1fr; }
+  .branch-overview-strip { grid-template-columns: 1fr; }
+  .form-branch-badge { min-width: 0; width: 100%; }
+}
+@media (max-width: 560px) {
+  .branch-form-grid { grid-template-columns: 1fr; }
+  .branch-field-wide { grid-column: 1; }
+  .branch-scope-detail,.stock-branch-rule { align-items: flex-start; }
+  .branch-scope-detail em { margin-left: auto; }
+  .stock-section-nav { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); }
+  .stock-section-nav a { text-align: center; }
+}
+@media print {
+  .branch-scope-bar,.stock-branch-banner,.stock-section-nav { display: none !important; }
+}

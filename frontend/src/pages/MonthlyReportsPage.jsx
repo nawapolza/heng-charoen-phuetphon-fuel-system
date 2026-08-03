@@ -16,6 +16,7 @@ import {
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { api } from '../api.js';
 import Loading from '../components/Loading.jsx';
+import BranchScopeBar from '../components/BranchScopeBar.jsx';
 import { useRealtime } from '../hooks/useRealtime.js';
 import { alertError, toastSuccess } from '../utils/alerts.js';
 import { date, datetime, money, number, today } from '../utils/format.js';
@@ -59,6 +60,8 @@ export default function MonthlyReportsPage() {
     if (!data) return;
     const rows = [
       ['รายงานน้ำมันประจำเดือน', data.month],
+      ['สาขา', data.branch?.name || '-'],
+      ['รหัสสาขา', data.branch?.code || '-'],
       ['สร้างเมื่อ', datetime(data.generated_at)],
       [],
       ['สรุป', 'ค่า'],
@@ -82,7 +85,7 @@ export default function MonthlyReportsPage() {
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = `fuel-monthly-${data.month}.csv`;
+    link.download = `fuel-monthly-${data.branch?.code || 'branch'}-${data.month}.csv`;
     document.body.appendChild(link);
     link.click();
     link.remove();
@@ -95,13 +98,15 @@ export default function MonthlyReportsPage() {
   return (
     <div className="page-shell monthly-report-page">
       <div className="page-orbit print-hidden">
-        <span className="page-orbit-code">05 / MONTHLY ACCOUNTING</span>
+        <span className="page-orbit-code">07 / MONTHLY ACCOUNTING</span>
         <div>
           <h1 className="page-title">สรุปน้ำมันส่งบัญชีรายเดือน</h1>
           <p className="page-subtitle">รวมลิตร ค่าใช้จ่าย ประสิทธิภาพ และส่วนต่างจากมาตรฐาน เพื่อปิดยอดให้เจ้าของกิจการและฝ่ายบัญชี</p>
         </div>
         <span className="page-orbit-signal">OWNER ONLY</span>
       </div>
+
+      <BranchScopeBar label="รายงานบัญชีของสาขา" detail="ยอดลิตร ค่าใช้จ่าย รถ พนักงาน และตรวจนับรวมเฉพาะสาขาที่เลือก" className="print-hidden" />
 
       <section className="monthly-report-toolbar card-clean print-hidden">
         <label><span><CalendarDays size={16} /> เดือนรายงาน</span><input className="input" type="month" value={month} onChange={(e) => setMonth(e.target.value)} /></label>
@@ -113,7 +118,7 @@ export default function MonthlyReportsPage() {
       </section>
 
       <header className="monthly-print-header">
-        <div><img src="/logo-heng.png" alt="เฮงเจริญพืชผล" /><div><p>เฮงเจริญพืชผล</p><h1>รายงานสรุปน้ำมันประจำเดือน {data?.month || month}</h1></div></div>
+        <div><img src="/logo-heng.png" alt="เฮงเจริญพืชผล" /><div><p>เฮงเจริญพืชผล · {data?.branch?.name || '-'}</p><h1>รายงานสรุปน้ำมันประจำเดือน {data?.month || month}</h1><small>รหัสสาขา {data?.branch?.code || '-'}</small></div></div>
         <span>สร้างเมื่อ {datetime(data?.generated_at)}</span>
       </header>
 

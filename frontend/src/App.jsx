@@ -2,6 +2,8 @@ import { useEffect, useMemo, useState } from 'react';
 import Layout from './components/Layout.jsx';
 import Loading from './components/Loading.jsx';
 import { AuthProvider, useAuth } from './contexts/AuthContext.jsx';
+import { BranchProvider, useBranch } from './contexts/BranchContext.jsx';
+import BranchesPage from './pages/BranchesPage.jsx';
 import DashboardPage from './pages/DashboardPage.jsx';
 import FuelCalculatorPage from './pages/FuelCalculatorPage.jsx';
 import DeliveriesPage from './pages/DeliveriesPage.jsx';
@@ -17,13 +19,25 @@ import VehiclesPage from './pages/VehiclesPage.jsx';
 export default function App() {
   return (
     <AuthProvider>
-      <AppShell />
+      <AuthGate />
     </AuthProvider>
   );
 }
 
+function AuthGate() {
+  const { user, loading } = useAuth();
+  if (loading) return <Loading />;
+  if (!user) return <LoginPage />;
+  return (
+    <BranchProvider>
+      <AppShell />
+    </BranchProvider>
+  );
+}
+
 function AppShell() {
-  const { user, loading, isOwner } = useAuth();
+  const { user, isOwner } = useAuth();
+  const { activeBranchId, loading: branchLoading, revision } = useBranch();
   const [page, setPage] = useState('quick');
 
   useEffect(() => {
@@ -31,33 +45,33 @@ function AppShell() {
     setPage(isOwner ? 'dashboard' : 'quick');
   }, [isOwner, user?.id]);
 
+  const pageKey = `${activeBranchId || 'branch'}-${revision}`;
   const pages = useMemo(() => {
     if (!isOwner) {
       return {
-        quick: <EmployeeQuickPage />,
-        calculator: <FuelCalculatorPage />,
-        deliveries: <DeliveriesPage />,
-        stocks: <StockStatusPage />,
+        quick: <EmployeeQuickPage key={`quick-${pageKey}`} />,
+        calculator: <FuelCalculatorPage key={`calculator-${pageKey}`} />,
+        deliveries: <DeliveriesPage key={`deliveries-${pageKey}`} />,
+        stocks: <StockStatusPage key={`stocks-${pageKey}`} />,
       };
     }
     return {
-      dashboard: <DashboardPage setPage={setPage} />,
-      calculator: <FuelCalculatorPage />,
-      quick: <EmployeeQuickPage />,
-      deliveries: <DeliveriesPage />,
-      stocks: <StockPage />,
-      reports: <MonthlyReportsPage />,
-      users: <UsersPage />,
-      vehicles: <VehiclesPage />,
-      notifications: <NotificationsPage />,
+      dashboard: <DashboardPage key={`dashboard-${pageKey}`} setPage={setPage} />,
+      branches: <BranchesPage key={`branches-${pageKey}`} />,
+      calculator: <FuelCalculatorPage key={`calculator-${pageKey}`} />,
+      quick: <EmployeeQuickPage key={`quick-${pageKey}`} />,
+      deliveries: <DeliveriesPage key={`deliveries-${pageKey}`} />,
+      stocks: <StockPage key={`stocks-${pageKey}`} />,
+      reports: <MonthlyReportsPage key={`reports-${pageKey}`} />,
+      users: <UsersPage key={`users-${pageKey}`} />,
+      vehicles: <VehiclesPage key={`vehicles-${pageKey}`} />,
+      notifications: <NotificationsPage key={`notifications-${pageKey}`} />,
     };
-  }, [isOwner]);
+  }, [activeBranchId, isOwner, pageKey]);
 
-  if (loading) return <Loading />;
-  if (!user) return <LoginPage />;
+  if (branchLoading || !activeBranchId) return <Loading />;
 
   const safePage = pages[page] ? page : (isOwner ? 'dashboard' : 'quick');
-
   return (
     <Layout page={safePage} setPage={setPage}>
       {pages[safePage]}

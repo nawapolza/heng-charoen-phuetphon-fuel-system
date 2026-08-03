@@ -1,5 +1,6 @@
 import {
   Bell,
+  Building2,
   Boxes,
   Car,
   ClipboardList,
@@ -9,6 +10,7 @@ import {
   History,
   LogOut,
   Menu,
+  MapPin,
   ShieldCheck,
   Sprout,
   Users,
@@ -17,10 +19,12 @@ import {
 } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext.jsx';
+import { useBranch } from '../contexts/BranchContext.jsx';
 import { confirmAction } from '../utils/alerts.js';
 
 const navBase = [
   { key: 'dashboard', label: 'หน้าหลัก', short: 'หน้าหลัก', eyebrow: 'ภาพรวมระบบ', icon: Gauge, ownerOnly: true },
+  { key: 'branches', label: 'จัดการสาขา', short: 'สาขา', eyebrow: 'เพิ่ม แก้ไข และแยกข้อมูล', icon: Building2, ownerOnly: true },
   { key: 'calculator', label: 'คำนวณน้ำมัน', short: 'คำนวณ', eyebrow: 'ระยะทางและค่าใช้จ่าย', icon: Calculator },
   { key: 'quick', label: 'บันทึกเติมน้ำมัน', short: 'บันทึก', eyebrow: 'สร้างรายการใหม่', icon: ClipboardList },
   { key: 'deliveries', label: 'รายการย้อนหลัง', short: 'รายการ', eyebrow: 'ค้นหาและตรวจสอบ', icon: History },
@@ -54,6 +58,7 @@ function useMobileViewport() {
 
 export default function Layout({ page, setPage, children }) {
   const { user, logout, isOwner } = useAuth();
+  const { activeBranch, activeBranches, activeBranchId, selectBranch } = useBranch();
   const isMobile = useMobileViewport();
   const [menuOpen, setMenuOpen] = useState(false);
   const menuCloseRef = useRef(null);
@@ -114,6 +119,11 @@ export default function Layout({ page, setPage, children }) {
 
           <div className="nova-system-pill"><Zap size={13} /><span>ระบบพร้อมใช้งาน</span><i /></div>
 
+          <div className="nova-branch-panel">
+            <div className="nova-branch-panel-label"><Building2 size={14} /><span>สาขาที่กำลังใช้งาน</span></div>
+            <BranchSelector compact={!isOwner} isOwner={isOwner} branches={activeBranches} value={activeBranchId} onChange={selectBranch} />
+          </div>
+
           <nav className="nova-route" aria-label="เมนูหลัก">
             {navItems.map((item) => (
               <NavButton key={item.key} item={item} active={page === item.key} onClick={() => go(item.key)} />
@@ -139,7 +149,7 @@ export default function Layout({ page, setPage, children }) {
             <>
               <button className="nova-mobile-brand" onClick={() => go(isOwner ? 'dashboard' : 'quick')}>
                 <span><img src="/logo-heng.png" alt="เฮงเจริญพืชผล" /></span>
-                <div><small>{currentItem.eyebrow}</small><strong>{currentItem.label}</strong></div>
+                <div><small>{activeBranch?.name || currentItem.eyebrow}</small><strong>{currentItem.label}</strong></div>
               </button>
               <button className="nova-menu-trigger" onClick={() => setMenuOpen(true)} aria-label="เปิดเมนู"><Menu size={21} /></button>
             </>
@@ -150,6 +160,10 @@ export default function Layout({ page, setPage, children }) {
                 <div><small>{currentItem.eyebrow}</small><h1>{currentItem.label}</h1></div>
               </div>
               <div className="nova-top-actions">
+                <div className="nova-top-branch">
+                  <MapPin size={16} />
+                  <BranchSelector isOwner={isOwner} branches={activeBranches} value={activeBranchId} onChange={selectBranch} />
+                </div>
                 <div className="nova-date-chip"><span>{todayLabel}</span></div>
                 {isOwner && (
                   <button className={`nova-notification-button ${page === 'notifications' ? 'is-active' : ''}`} onClick={() => go('notifications')} aria-label="เปิดแจ้งเตือน">
@@ -199,6 +213,10 @@ export default function Layout({ page, setPage, children }) {
               </div>
               <button ref={menuCloseRef} onClick={() => setMenuOpen(false)} aria-label="ปิดเมนู"><X size={21} /></button>
             </div>
+            <div className="nova-sheet-branch">
+              <span><Building2 size={17} /> สาขาที่กำลังใช้งาน</span>
+              <BranchSelector isOwner={isOwner} branches={activeBranches} value={activeBranchId} onChange={selectBranch} />
+            </div>
             <div className="nova-sheet-grid">
               {navItems.map((item) => <NavButton key={item.key} item={item} active={page === item.key} onClick={() => go(item.key)} mobile />)}
             </div>
@@ -207,6 +225,18 @@ export default function Layout({ page, setPage, children }) {
         </div>
       )}
     </div>
+  );
+}
+
+function BranchSelector({ branches, value, onChange, isOwner, compact = false }) {
+  if (!isOwner) {
+    const branch = branches.find((item) => item.id === value) || branches[0];
+    return <div className={`branch-readonly-chip ${compact ? 'is-compact' : ''}`}><strong>{branch?.name || 'ไม่พบสาขา'}</strong><small>{branch?.code || '-'}</small></div>;
+  }
+  return (
+    <select className={`branch-global-select ${compact ? 'is-compact' : ''}`} value={value || ''} onChange={(event) => onChange(event.target.value)} aria-label="เลือกสาขา">
+      {branches.map((branch) => <option key={branch.id} value={branch.id}>{branch.name} ({branch.code})</option>)}
+    </select>
   );
 }
 

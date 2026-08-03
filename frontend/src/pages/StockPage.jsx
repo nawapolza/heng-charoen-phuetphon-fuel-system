@@ -6,6 +6,7 @@ import {
   FileText,
   Gauge,
   History,
+  Building2,
   PackagePlus,
   Plus,
   Save,
@@ -16,6 +17,7 @@ import {
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { api, uploadUrl } from '../api.js';
 import Loading from '../components/Loading.jsx';
+import { useBranch } from '../contexts/BranchContext.jsx';
 import { useRealtime } from '../hooks/useRealtime.js';
 import { alertError, confirmAction, toastSuccess } from '../utils/alerts.js';
 import { date, datetime, ITEM_TYPES, money, number, today } from '../utils/format.js';
@@ -25,6 +27,7 @@ const blankAdjust = { item_type: 'ดีเซล', transaction_date: today(), c
 const blankAudit = { item_type: 'ดีเซล', audit_date: today(), actual_balance_liters: '', note: '' };
 
 export default function StockPage() {
+  const { activeBranch } = useBranch();
   const [stocks, setStocks] = useState([]);
   const [transactions, setTransactions] = useState([]);
   const [audits, setAudits] = useState([]);
@@ -139,7 +142,7 @@ export default function StockPage() {
   return (
     <div className="page-shell owner-stock-page">
       <div className="page-orbit">
-        <span className="page-orbit-code">04 / STOCK CONTROL</span>
+        <span className="page-orbit-code">06 / STOCK CONTROL</span>
         <div>
           <h1 className="page-title">คลังน้ำมันและสต๊อกเรียลไทม์</h1>
           <p className="page-subtitle">เติมคลัง ตั้งค่าความจุและระดับแจ้งเตือน ตรวจนับจริง และตรวจสอบการเคลื่อนไหวจากหน้าเดียว</p>
@@ -147,7 +150,19 @@ export default function StockPage() {
         <span className="page-orbit-signal">OWNER CONTROL</span>
       </div>
 
-      <section className="stock-control-grid">
+      <section className="stock-branch-banner card-clean" aria-label="สาขาที่กำลังจัดการ">
+        <div className="stock-branch-main">
+          <span className="stock-branch-icon"><Building2 size={22} /></span>
+          <div><small>คลังที่กำลังจัดการ</small><strong>{activeBranch?.name || 'กำลังเลือกสาขา'}</strong><p>รหัส {activeBranch?.code || '-'} · ข้อมูลสต๊อกและประวัติด้านล่างแยกจากสาขาอื่นทั้งหมด</p></div>
+        </div>
+        <div className="stock-branch-rule"><CheckCircle2 size={17} /><span>การเติม ตรวจนับ ตั้งค่า และปรับยอด จะบันทึกเข้าสาขานี้เท่านั้น</span></div>
+      </section>
+
+      <nav className="stock-section-nav" aria-label="ทางลัดการจัดการคลัง">
+        <a href="#stock-overview">ภาพรวมถัง</a><a href="#stock-intake">เติมเข้าคลัง</a><a href="#stock-audit">ตรวจนับจริง</a><a href="#stock-settings">ตั้งค่าถัง</a><a href="#stock-history">ประวัติ</a>
+      </nav>
+
+      <section id="stock-overview" className="stock-control-grid">
         {stocks.map((stock) => {
           const status = stock.level_status || 'ready';
           const Icon = status === 'ready' ? CheckCircle2 : AlertTriangle;
@@ -164,10 +179,10 @@ export default function StockPage() {
       </section>
 
       <div className="grid gap-4 xl:grid-cols-[1.1fr_.9fr]">
-        <form onSubmit={submitAdd} className="card overflow-hidden">
+        <form id="stock-intake" onSubmit={submitAdd} className="card overflow-hidden">
           <div className="module-banner">
             <h2 className="flex items-center gap-2 text-xl font-black"><PackagePlus size={22} /> เติมน้ำมันเข้าคลัง</h2>
-            <p className="mt-1 text-sm font-bold text-blue-50">บันทึกลิตร ยอดเงิน บิล และหลักฐาน ระบบอัปเดตทุกหน้าทันที</p>
+            <p className="mt-1 text-sm font-bold text-blue-50">บันทึกเข้าคลังของสาขา {activeBranch?.name || 'ที่เลือก'} พร้อมลิตร ยอดเงิน บิล และหลักฐาน ระบบอัปเดตทุกหน้าทันที</p>
           </div>
           <div className="grid gap-3 p-4 md:grid-cols-2 md:p-5">
             <Select label="ประเภทน้ำมัน" value={form.item_type} onChange={(v) => setForm({ ...form, item_type: v })} />
@@ -183,7 +198,7 @@ export default function StockPage() {
           </div>
         </form>
 
-        <form onSubmit={submitAudit} className="card stock-audit-form">
+        <form id="stock-audit" onSubmit={submitAudit} className="card stock-audit-form">
           <div className="stock-audit-head"><span><ClipboardCheck size={22} /></span><div><h2>ตรวจนับสต๊อกจริง</h2><p>กรอกยอดจากการวัดจริง ระบบคำนวณขาด/เกินและส่งเข้าใบสรุปรายเดือน</p></div></div>
           <div className="grid gap-3 p-5">
             <Select label="ประเภทน้ำมัน" value={audit.item_type} onChange={(v) => setAudit({ ...audit, item_type: v })} />
@@ -197,7 +212,7 @@ export default function StockPage() {
         </form>
       </div>
 
-      <section className="card-clean stock-settings-section">
+      <section id="stock-settings" className="card-clean stock-settings-section">
         <div className="stock-settings-head"><div><Settings2 size={21} /><span><strong>ตั้งค่าถังและระดับแจ้งเตือน</strong><small>ระบบจะแจ้งเจ้าของแบบเรียลไทม์เมื่อยอดถึงจุดสั่งเติมหรือจุดวิกฤต</small></span></div></div>
         <div className="stock-settings-grid">
           {stocks.map((stock) => {
@@ -227,7 +242,7 @@ export default function StockPage() {
         <button className="btn-dark">ยืนยันปรับ</button>
       </form>
 
-      <HistoryTable transactions={transactions} />
+      <div id="stock-history"><HistoryTable transactions={transactions} /></div>
       <AuditTable audits={audits} />
     </div>
   );

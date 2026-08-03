@@ -3,7 +3,7 @@ services:
     name: heng-charoen-fuel-backend
     env: node
     rootDir: backend
-    buildCommand: node ../scripts/verify-project.js && npm ci --no-audit --no-fund
+    buildCommand: node ../scripts/verify-v62.js && npm ci --no-audit --no-fund
     startCommand: npm start
     envVars:
       - key: NODE_VERSION
@@ -23,7 +23,7 @@ services:
     name: heng-charoen-fuel-frontend
     env: static
     rootDir: frontend
-    buildCommand: node ../scripts/verify-project.js && npm ci --include=dev --no-audit --no-fund && npm run build
+    buildCommand: node ../scripts/verify-v62.js && npm ci --include=dev --no-audit --no-fund && npm run build
     staticPublishPath: dist
     envVars:
       - key: NODE_VERSION

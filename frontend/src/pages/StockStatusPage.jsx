@@ -1,12 +1,14 @@
-import { AlertTriangle, Boxes, CheckCircle2, RefreshCw, Wifi, WifiOff } from 'lucide-react';
+import { AlertTriangle, Boxes, Building2, CheckCircle2, RefreshCw, Wifi, WifiOff } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import { api } from '../api.js';
 import Loading from '../components/Loading.jsx';
+import { useBranch } from '../contexts/BranchContext.jsx';
 import { useRealtime } from '../hooks/useRealtime.js';
 import { alertError, toastInfo } from '../utils/alerts.js';
 import { datetime, number } from '../utils/format.js';
 
 export default function StockStatusPage() {
+  const { activeBranch } = useBranch();
   const [stocks, setStocks] = useState([]);
   const [loading, setLoading] = useState(true);
   const [updatedAt, setUpdatedAt] = useState('');
@@ -39,13 +41,18 @@ export default function StockStatusPage() {
   return (
     <div className="page-shell stock-status-page">
       <div className="page-orbit">
-        <span className="page-orbit-code">04 / STOCK STATUS</span>
+        <span className="page-orbit-code">06 / STOCK STATUS</span>
         <div>
           <h1 className="page-title">สถานะน้ำมันพร้อมจ่าย</h1>
           <p className="page-subtitle">พนักงานดูยอดคงเหลือและความพร้อมของแต่ละถังได้ แต่ไม่มีสิทธิ์เติม ปรับ หรือตั้งค่าสต๊อก</p>
         </div>
         <span className={`page-orbit-signal ${connected ? '' : 'is-offline'}`}>{connected ? 'REALTIME' : 'AUTO REFRESH'}</span>
       </div>
+
+      <section className="stock-branch-banner card-clean" aria-label="สาขาของพนักงาน">
+        <div className="stock-branch-main"><span className="stock-branch-icon"><Building2 size={22} /></span><div><small>กำลังดูสต๊อกของสาขา</small><strong>{activeBranch?.name || '-'}</strong><p>รหัส {activeBranch?.code || '-'} · ยอดทุกถังแยกจากสาขาอื่น</p></div></div>
+        <div className="stock-branch-rule"><CheckCircle2 size={17} /><span>ระบบแสดงเฉพาะข้อมูลสาขาที่บัญชีนี้สังกัด</span></div>
+      </section>
 
       <div className="stock-status-toolbar card-clean">
         <div>{connected ? <Wifi size={18} /> : <WifiOff size={18} />}<span>{connected ? 'เชื่อมต่อข้อมูลแบบเรียลไทม์' : 'ระบบจะอัปเดตทุก 20 วินาที'}</span></div>

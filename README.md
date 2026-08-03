@@ -2,6 +2,25 @@
 
 ระบบจัดการน้ำมัน รถ คนขับ สต๊อก พนักงาน และรายการย้อนหลัง ออกแบบใหม่ทั้งโครงสร้างหน้าจอ โดยยังใช้ API และความสามารถเดิมครบถ้วน
 
+## V62 — Multi-Branch Professional Edition
+
+- เพิ่มเมนู **จัดการสาขา** สำหรับเพิ่ม แก้ไข เลือกใช้งาน ปิดใช้งาน และเปิดสาขาเดิมอีกครั้ง
+- แยกสต๊อกด้วยคีย์ `branch_id + item_type` ทำให้ดีเซล น้ำมันเครื่อง และแอดบลูของแต่ละสาขาไม่ปะปนกัน
+- แยกข้อมูลรายการน้ำมัน Dashboard รายงานบัญชี รถ/คนขับ พนักงาน แจ้งเตือน ประวัติสต๊อก และตรวจนับจริงตามสาขา
+- เจ้าของสลับสาขาจาก Sidebar หรือ Topbar ได้ครั้งเดียว ทุกหน้าจะโหลดข้อมูลสาขาเดียวกันอัตโนมัติ
+- พนักงานเห็นเฉพาะสาขาที่บัญชีสังกัด และแก้สาขาเองไม่ได้
+- เพิ่มป้ายขอบเขตสาขาในทุกหน้าสำคัญและในฟอร์มบันทึก เพื่อลดการลงข้อมูลผิดสาขา
+- เพิ่ม CRUD สาขาฝั่ง API และ Header `X-Branch-Id` ฝั่ง Frontend
+- ย้ายข้อมูล V61 เดิมเข้าสาขา **สำนักงานใหญ่ (HQ)** อัตโนมัติโดยไม่ลบประวัติเดิม
+- ปรับหน้าคลังให้แยกส่วน ภาพรวม เติมเข้าคลัง ตรวจนับ ตั้งค่าถัง ปรับยอด และประวัติอย่างชัดเจน
+- แก้การเชื่อมรถแบบ “ใช้ทั่วไป” ให้พนักงานในสาขาเลือกใช้ได้ และแยกร่างฟอร์มตามสาขา
+- เวอร์ชันระบบ: **62.0.0**
+
+รายละเอียดรุ่น: `RELEASE_NOTES_V62.md`  
+การเปลี่ยน MongoDB: `MONGODB_CHANGES_V62.md`  
+ผลตรวจ: `TEST_REPORT_V62.md`  
+รายการไฟล์: `PACKAGE_MANIFEST_V62.txt`
+
 ## V60 — ระบบคำนวณ สต๊อก Realtime และรายงานบัญชีในเว็บเดียว
 
 - ไม่มีหน้าแนะนำบริษัท
@@ -42,14 +61,14 @@ npm run dev:frontend
 
 ```bash
 cd frontend
-npm ci --no-audit --no-fund
+npm ci --include=dev --no-audit --no-fund
 npm run build
 ```
 
 ## Render
 
 - Frontend Root Directory: `frontend`
-- Build Command: `npm ci --no-audit --no-fund && node ./node_modules/vite/bin/vite.js build`
+- Build Command: `npm ci --include=dev --no-audit --no-fund && node ./node_modules/vite/bin/vite.js build`
 - Publish Directory: `dist`
 - Backend Root Directory: `backend`
 - Start Command: `npm start`

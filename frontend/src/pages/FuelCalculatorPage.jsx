@@ -13,6 +13,7 @@ import {
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { api } from '../api.js';
 import Loading from '../components/Loading.jsx';
+import BranchScopeBar from '../components/BranchScopeBar.jsx';
 import { useRealtime } from '../hooks/useRealtime.js';
 import { alertError } from '../utils/alerts.js';
 import { money, number, parseDecimal } from '../utils/format.js';
@@ -108,7 +109,7 @@ export default function FuelCalculatorPage() {
   return (
     <div className="page-shell fuel-calculator-page">
       <div className="page-orbit">
-        <span className="page-orbit-code">02 / FUEL CALCULATOR</span>
+        <span className="page-orbit-code">03 / FUEL CALCULATOR</span>
         <div>
           <h1 className="page-title">คำนวณน้ำมันและค่าใช้จ่าย</h1>
           <p className="page-subtitle">คำนวณลิตรจากระยะทาง วิเคราะห์ต้นทุน ประสิทธิภาพ และส่วนต่างจากมาตรฐานก่อนบันทึกงานจริง</p>
@@ -116,6 +117,7 @@ export default function FuelCalculatorPage() {
         <span className="page-orbit-signal">LIVE CALC</span>
       </div>
 
+      <BranchScopeBar label="ข้อมูลคำนวณของสาขา" detail="ตัวเลือกรถและสถานะสต๊อกที่ใช้คำนวณมาจากสาขาที่เลือก" />
       <section className="calculator-layout">
         <div className="card-clean calculator-input-card">
           <div className="calculator-card-head">

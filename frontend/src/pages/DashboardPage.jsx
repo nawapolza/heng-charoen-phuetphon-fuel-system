@@ -89,7 +89,7 @@ export default function DashboardPage({ setPage }) {
           <div className="dashboard-title-line">
             <div>
               <p className="dashboard-eyebrow">ภาพรวมประจำวัน</p>
-              <h1>ภาพรวมเฮงเจริญพืชผล</h1>
+              <h1>ภาพรวม {data?.branch?.name || 'เฮงเจริญพืชผล'}</h1>
             </div>
             <span className={`dashboard-sync ${connected ? 'is-online' : 'is-offline'}`}>
               {connected ? <Wifi size={15} /> : <WifiOff size={15} />}
@@ -99,6 +99,7 @@ export default function DashboardPage({ setPage }) {
           <p>ติดตามงานน้ำมัน ปริมาณสต๊อก ค่าใช้จ่าย รถ และประสิทธิภาพการวิ่งจากหน้าจอเดียว</p>
           <div className="dashboard-meta-row">
             <span><CalendarDays size={14} /> ช่วงข้อมูล {periodText}</span>
+            <span><Boxes size={14} /> สาขา {data?.branch?.name || '-'} ({data?.branch?.code || '-'})</span>
             <span>อัปเดตล่าสุด {datetime(lastEventAt || lastLoaded)}</span>
             {(data?.low_stock_count || 0) > 0 && <span className="is-danger"><AlertTriangle size={14} /> สต๊อกต่ำ {data.low_stock_count} รายการ</span>}
           </div>

@@ -1,5 +1,6 @@
 const TOKEN_KEY = 'oilops_token';
 const USER_KEY = 'oilops_user';
+const BRANCH_KEY = 'oilops_active_branch_v62';
 
 function normalizeBaseUrl(url) {
   const raw = url || import.meta.env.VITE_API_URL || '/api';
@@ -20,6 +21,15 @@ export function getToken() {
   return localStorage.getItem(TOKEN_KEY) || '';
 }
 
+export function getActiveBranchId() {
+  return localStorage.getItem(BRANCH_KEY) || '';
+}
+
+export function setActiveBranchId(branchId) {
+  if (branchId) localStorage.setItem(BRANCH_KEY, String(branchId));
+  else localStorage.removeItem(BRANCH_KEY);
+}
+
 export function setSession(token, user) {
   if (token) localStorage.setItem(TOKEN_KEY, token);
   if (user) localStorage.setItem(USER_KEY, JSON.stringify(user));
@@ -28,6 +38,7 @@ export function setSession(token, user) {
 export function clearSession() {
   localStorage.removeItem(TOKEN_KEY);
   localStorage.removeItem(USER_KEY);
+  localStorage.removeItem(BRANCH_KEY);
 }
 
 export function getStoredUser() {
@@ -64,6 +75,8 @@ export async function apiRequest(path, options = {}) {
   const headers = new Headers(options.headers || {});
   const token = getToken();
   if (token) headers.set('Authorization', `Bearer ${token}`);
+  const branchId = getActiveBranchId();
+  if (branchId) headers.set('X-Branch-Id', branchId);
   if (!(options.body instanceof FormData) && options.body !== undefined && !headers.has('Content-Type')) {
     headers.set('Content-Type', 'application/json');
   }
@@ -87,6 +100,10 @@ function query(params = {}) {
 export const api = {
   login: (username, password) => apiRequest('/auth/login', { method: 'POST', body: { username, password } }),
   me: () => apiRequest('/auth/me'),
+  branches: () => apiRequest('/branches'),
+  createBranch: (body) => apiRequest('/branches', { method: 'POST', body }),
+  updateBranch: (id, body) => apiRequest(`/branches/${id}`, { method: 'PUT', body }),
+  deleteBranch: (id) => apiRequest(`/branches/${id}`, { method: 'DELETE' }),
   dashboard: (params = {}) => apiRequest(`/dashboard/stats${query(params)}`),
   itemTypes: () => apiRequest('/item-types'),
   metaFields: () => apiRequest('/meta/fields'),
