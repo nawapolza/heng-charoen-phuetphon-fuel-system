@@ -825,7 +825,7 @@ export default function DeliveryForm({ initialData = null, onSaved = null }) {
 
   return (
     <>
-      <form onSubmit={onSubmit} className="mobile-form-card app-form-card overflow-hidden">
+      <form onSubmit={onSubmit} className="mobile-form-card app-form-card">
         <header className="app-form-hero">
           <div className="form-hero-copy">
             <div className="form-hero-brand">

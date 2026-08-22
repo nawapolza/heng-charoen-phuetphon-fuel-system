@@ -2439,5 +2439,5 @@ app.use((err, _req, res, _next) => {
 });
 
 httpServer.listen(config.port, () => {
-  console.log(`Heng Charoen Phuetphon Fuel Management API v67-auto-route running on port ${config.port}`);
+  console.log(`Heng Charoen Phuetphon Fuel Management API v68-mobile-polish running on port ${config.port}`);
 });
