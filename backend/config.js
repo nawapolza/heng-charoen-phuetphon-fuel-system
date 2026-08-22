@@ -27,5 +27,6 @@ module.exports = {
     geocodingUrl: envValue('MAP_GEOCODING_URL', 'https://nominatim.openstreetmap.org'),
     routingUrl: envValue('MAP_ROUTING_URL', 'https://router.project-osrm.org'),
     userAgent: envValue('MAP_USER_AGENT', 'HengCharoenFuelSystem/63.0'),
+    googleApiKey: envValue('GOOGLE_MAPS_API_KEY', ''),
   },
 };

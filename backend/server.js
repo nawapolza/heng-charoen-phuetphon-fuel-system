@@ -1594,20 +1594,69 @@ async function mapFetchJson(url) {
   }
 }
 
+async function googleMapsJson(url, { method = 'GET', body, fieldMask = '' } = {}) {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 15000);
+  try {
+    const headers = { Accept: 'application/json', 'Content-Type': 'application/json', 'X-Goog-Api-Key': config.maps.googleApiKey };
+    if (fieldMask) headers['X-Goog-FieldMask'] = fieldMask;
+    const response = await fetch(url, { method, signal: controller.signal, headers, body: body ? JSON.stringify(body) : undefined });
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(payload?.error?.message || `Google Maps HTTP ${response.status}`);
+    return payload;
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+function decodeGooglePolyline(encoded = '') {
+  const points = [];
+  let index = 0; let lat = 0; let lon = 0;
+  while (index < encoded.length) {
+    let shift = 0; let result = 0; let byte;
+    do { byte = encoded.charCodeAt(index++) - 63; result |= (byte & 0x1f) << shift; shift += 5; } while (byte >= 0x20);
+    lat += (result & 1) ? ~(result >> 1) : (result >> 1);
+    shift = 0; result = 0;
+    do { byte = encoded.charCodeAt(index++) - 63; result |= (byte & 0x1f) << shift; shift += 5; } while (byte >= 0x20);
+    lon += (result & 1) ? ~(result >> 1) : (result >> 1);
+    points.push([lon / 1e5, lat / 1e5]);
+  }
+  return points;
+}
+
 router.get('/maps/search', requireAuth, asyncHandler(async (req, res) => {
   const q = String(req.query.q || '').trim().slice(0, 180);
   if (q.length < 2) return jsonResponse(res, { success: false, message: 'กรุณากรอกชื่อสถานที่อย่างน้อย 2 ตัวอักษร' }, 400);
-  const url = `${config.maps.geocodingUrl}/search?format=jsonv2&countrycodes=th&limit=6&addressdetails=1&q=${encodeURIComponent(q)}`;
+  if (config.maps.googleApiKey) {
+    try {
+      const payload = await googleMapsJson('https://places.googleapis.com/v1/places:searchText', {
+        method: 'POST', body: { textQuery: q, languageCode: 'th', maxResultCount: 8 },
+        fieldMask: 'places.id,places.displayName,places.formattedAddress,places.location,places.primaryType',
+      });
+      const data = (payload.places || []).map((place) => ({ id: place.id, name: `${place.displayName?.text || q}${place.formattedAddress ? ` — ${place.formattedAddress}` : ''}`, lat: Number(place.location?.latitude), lon: Number(place.location?.longitude), type: place.primaryType || '', provider: 'Google Places' })).filter((row) => Number.isFinite(row.lat) && Number.isFinite(row.lon));
+      if (data.length) return jsonResponse(res, { success: true, data, provider: 'Google Places' });
+    } catch (error) { console.warn('Google Places fallback:', error.message); }
+  }
+  const url = `${config.maps.geocodingUrl}/search?format=jsonv2&limit=8&addressdetails=1&q=${encodeURIComponent(q)}`;
   const rows = await mapFetchJson(url);
   const data = (Array.isArray(rows) ? rows : []).map((row) => ({
-    id: String(row.place_id), name: row.display_name, lat: Number(row.lat), lon: Number(row.lon), type: row.type || '',
+    id: String(row.place_id), name: row.display_name, lat: Number(row.lat), lon: Number(row.lon), type: row.type || '', provider: 'OpenStreetMap',
   })).filter((row) => Number.isFinite(row.lat) && Number.isFinite(row.lon));
   jsonResponse(res, { success: true, data });
 }));
 
+router.get('/maps/status', requireAuth, (_req, res) => jsonResponse(res, { success: true, data: { google_enabled: Boolean(config.maps.googleApiKey), search_provider: config.maps.googleApiKey ? 'Google Places' : 'OpenStreetMap ทั่วโลก', route_provider: config.maps.googleApiKey ? 'Google Routes (Traffic-aware)' : 'OSRM' } }));
+
 router.get('/maps/reverse', requireAuth, asyncHandler(async (req, res) => {
   const lat = mapNumber(req.query.lat, -90, 90, 'ละติจูด');
   const lon = mapNumber(req.query.lon, -180, 180, 'ลองจิจูด');
+  if (config.maps.googleApiKey) {
+    try {
+      const payload = await googleMapsJson(`https://maps.googleapis.com/maps/api/geocode/json?latlng=${lat},${lon}&language=th&key=${encodeURIComponent(config.maps.googleApiKey)}`);
+      const found = payload.results?.[0];
+      if (found) return jsonResponse(res, { success: true, data: { id: found.place_id || 'gps', name: found.formatted_address || `${lat}, ${lon}`, lat, lon, type: 'gps', provider: 'Google Geocoding' } });
+    } catch (error) { console.warn('Google Geocoding fallback:', error.message); }
+  }
   const url = `${config.maps.geocodingUrl}/reverse?format=jsonv2&zoom=18&addressdetails=1&lat=${lat}&lon=${lon}`;
   const row = await mapFetchJson(url);
   jsonResponse(res, { success: true, data: { id: String(row.place_id || 'gps'), name: row.display_name || `${lat}, ${lon}`, lat, lon, type: row.type || 'gps' } });
@@ -1618,6 +1667,17 @@ router.get('/maps/route', requireAuth, asyncHandler(async (req, res) => {
   const originLon = mapNumber(req.query.origin_lon, -180, 180, 'ลองจิจูดต้นทาง');
   const destinationLat = mapNumber(req.query.destination_lat, -90, 90, 'ละติจูดปลายทาง');
   const destinationLon = mapNumber(req.query.destination_lon, -180, 180, 'ลองจิจูดปลายทาง');
+  if (config.maps.googleApiKey) {
+    try {
+      const payload = await googleMapsJson('https://routes.googleapis.com/directions/v2:computeRoutes', {
+        method: 'POST',
+        body: { origin: { location: { latLng: { latitude: originLat, longitude: originLon } } }, destination: { location: { latLng: { latitude: destinationLat, longitude: destinationLon } } }, travelMode: 'DRIVE', routingPreference: 'TRAFFIC_AWARE', computeAlternativeRoutes: false, languageCode: 'th-TH', units: 'METRIC' },
+        fieldMask: 'routes.distanceMeters,routes.duration,routes.polyline.encodedPolyline',
+      });
+      const googleRoute = payload.routes?.[0];
+      if (googleRoute) return jsonResponse(res, { success: true, data: { distance_km: round2(Number(googleRoute.distanceMeters || 0) / 1000), duration_minutes: Math.max(1, Math.round(Number(String(googleRoute.duration || '0s').replace('s', '')) / 60)), geometry: decodeGooglePolyline(googleRoute.polyline?.encodedPolyline || ''), calculated_at: nowIso(), provider: 'Google Routes · Traffic-aware' } });
+    } catch (error) { console.warn('Google Routes fallback:', error.message); }
+  }
   const coordinates = `${originLon},${originLat};${destinationLon},${destinationLat}`;
   const url = `${config.maps.routingUrl}/route/v1/driving/${coordinates}?overview=full&geometries=geojson&alternatives=false&steps=false`;
   const payload = await mapFetchJson(url);
@@ -2373,5 +2433,5 @@ app.use((err, _req, res, _next) => {
 });
 
 httpServer.listen(config.port, () => {
-  console.log(`Heng Charoen Phuetphon Fuel Management API multi-branch-v64-satellite-route running on port ${config.port}`);
+  console.log(`Heng Charoen Phuetphon Fuel Management API v65-google-global-route running on port ${config.port}`);
 });
