@@ -14,6 +14,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { api } from '../api.js';
 import Loading from '../components/Loading.jsx';
 import BranchScopeBar from '../components/BranchScopeBar.jsx';
+import RouteDistancePlanner from '../components/RouteDistancePlanner.jsx';
 import { useRealtime } from '../hooks/useRealtime.js';
 import { alertError } from '../utils/alerts.js';
 import { money, number, parseDecimal } from '../utils/format.js';
@@ -118,6 +119,7 @@ export default function FuelCalculatorPage() {
       </div>
 
       <BranchScopeBar label="ข้อมูลคำนวณของสาขา" detail="ตัวเลือกรถและสถานะสต๊อกที่ใช้คำนวณมาจากสาขาที่เลือก" />
+      <RouteDistancePlanner onDistance={(distance) => setField('distance_km', String(distance))} />
       <section className="calculator-layout">
         <div className="card-clean calculator-input-card">
           <div className="calculator-card-head">

@@ -23,4 +23,9 @@ module.exports = {
   timezone: envValue('APP_TIMEZONE', 'Asia/Bangkok'),
   corsAllowAll: envValue('CORS_ALLOW_ALL', 'true') === 'true',
   corsAllowedOrigins: allowedOrigins,
+  maps: {
+    geocodingUrl: envValue('MAP_GEOCODING_URL', 'https://nominatim.openstreetmap.org'),
+    routingUrl: envValue('MAP_ROUTING_URL', 'https://router.project-osrm.org'),
+    userAgent: envValue('MAP_USER_AGENT', 'HengCharoenFuelSystem/63.0'),
+  },
 };

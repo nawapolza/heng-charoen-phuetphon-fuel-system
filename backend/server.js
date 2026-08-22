@@ -1566,6 +1566,70 @@ router.get('/auth/me', requireAuth, (req, res) => jsonResponse(res, { success: t
 
 router.get('/item-types', (_req, res) => jsonResponse(res, { success: true, data: ITEM_TYPES }));
 
+function mapNumber(value, min, max, label) {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed) || parsed < min || parsed > max) {
+    const err = new Error(`${label} ไม่ถูกต้อง`);
+    err.status = 400;
+    throw err;
+  }
+  return parsed;
+}
+
+async function mapFetchJson(url) {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 12000);
+  try {
+    const response = await fetch(url, {
+      signal: controller.signal,
+      headers: { 'User-Agent': config.maps.userAgent, Accept: 'application/json', 'Accept-Language': 'th,en;q=0.8' },
+    });
+    if (!response.ok) throw new Error(`บริการแผนที่ตอบกลับ HTTP ${response.status}`);
+    return await response.json();
+  } catch (error) {
+    if (error.name === 'AbortError') throw new Error('บริการแผนที่ใช้เวลานานเกินไป กรุณาลองใหม่');
+    throw error;
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+router.get('/maps/search', requireAuth, asyncHandler(async (req, res) => {
+  const q = String(req.query.q || '').trim().slice(0, 180);
+  if (q.length < 2) return jsonResponse(res, { success: false, message: 'กรุณากรอกชื่อสถานที่อย่างน้อย 2 ตัวอักษร' }, 400);
+  const url = `${config.maps.geocodingUrl}/search?format=jsonv2&countrycodes=th&limit=6&addressdetails=1&q=${encodeURIComponent(q)}`;
+  const rows = await mapFetchJson(url);
+  const data = (Array.isArray(rows) ? rows : []).map((row) => ({
+    id: String(row.place_id), name: row.display_name, lat: Number(row.lat), lon: Number(row.lon), type: row.type || '',
+  })).filter((row) => Number.isFinite(row.lat) && Number.isFinite(row.lon));
+  jsonResponse(res, { success: true, data });
+}));
+
+router.get('/maps/reverse', requireAuth, asyncHandler(async (req, res) => {
+  const lat = mapNumber(req.query.lat, -90, 90, 'ละติจูด');
+  const lon = mapNumber(req.query.lon, -180, 180, 'ลองจิจูด');
+  const url = `${config.maps.geocodingUrl}/reverse?format=jsonv2&zoom=18&addressdetails=1&lat=${lat}&lon=${lon}`;
+  const row = await mapFetchJson(url);
+  jsonResponse(res, { success: true, data: { id: String(row.place_id || 'gps'), name: row.display_name || `${lat}, ${lon}`, lat, lon, type: row.type || 'gps' } });
+}));
+
+router.get('/maps/route', requireAuth, asyncHandler(async (req, res) => {
+  const originLat = mapNumber(req.query.origin_lat, -90, 90, 'ละติจูดต้นทาง');
+  const originLon = mapNumber(req.query.origin_lon, -180, 180, 'ลองจิจูดต้นทาง');
+  const destinationLat = mapNumber(req.query.destination_lat, -90, 90, 'ละติจูดปลายทาง');
+  const destinationLon = mapNumber(req.query.destination_lon, -180, 180, 'ลองจิจูดปลายทาง');
+  const coordinates = `${originLon},${originLat};${destinationLon},${destinationLat}`;
+  const url = `${config.maps.routingUrl}/route/v1/driving/${coordinates}?overview=false&alternatives=false&steps=false`;
+  const payload = await mapFetchJson(url);
+  const route = payload?.routes?.[0];
+  if (!route) return jsonResponse(res, { success: false, message: 'ไม่พบเส้นทางรถยนต์ระหว่างสองจุดนี้' }, 404);
+  jsonResponse(res, { success: true, data: {
+    distance_km: round2(Number(route.distance || 0) / 1000),
+    duration_minutes: Math.max(1, Math.round(Number(route.duration || 0) / 60)),
+    calculated_at: nowIso(), provider: 'OpenStreetMap / OSRM',
+  } });
+}));
+
 router.get('/meta/fields', requireAuth, (_req, res) => jsonResponse(res, {
   success: true,
   data: {
@@ -2305,5 +2369,5 @@ app.use((err, _req, res, _next) => {
 });
 
 httpServer.listen(config.port, () => {
-  console.log(`Heng Charoen Phuetphon Fuel Management API multi-branch-v62 running on port ${config.port}`);
+  console.log(`Heng Charoen Phuetphon Fuel Management API multi-branch-v63-gps running on port ${config.port}`);
 });
