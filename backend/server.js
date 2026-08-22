@@ -1619,13 +1619,17 @@ router.get('/maps/route', requireAuth, asyncHandler(async (req, res) => {
   const destinationLat = mapNumber(req.query.destination_lat, -90, 90, 'ละติจูดปลายทาง');
   const destinationLon = mapNumber(req.query.destination_lon, -180, 180, 'ลองจิจูดปลายทาง');
   const coordinates = `${originLon},${originLat};${destinationLon},${destinationLat}`;
-  const url = `${config.maps.routingUrl}/route/v1/driving/${coordinates}?overview=false&alternatives=false&steps=false`;
+  const url = `${config.maps.routingUrl}/route/v1/driving/${coordinates}?overview=full&geometries=geojson&alternatives=false&steps=false`;
   const payload = await mapFetchJson(url);
   const route = payload?.routes?.[0];
   if (!route) return jsonResponse(res, { success: false, message: 'ไม่พบเส้นทางรถยนต์ระหว่างสองจุดนี้' }, 404);
   jsonResponse(res, { success: true, data: {
     distance_km: round2(Number(route.distance || 0) / 1000),
     duration_minutes: Math.max(1, Math.round(Number(route.duration || 0) / 60)),
+    geometry: Array.isArray(route.geometry?.coordinates)
+      ? route.geometry.coordinates.map((point) => [Number(point[0]), Number(point[1])])
+        .filter((point) => Number.isFinite(point[0]) && Number.isFinite(point[1]))
+      : [],
     calculated_at: nowIso(), provider: 'OpenStreetMap / OSRM',
   } });
 }));
@@ -2369,5 +2373,5 @@ app.use((err, _req, res, _next) => {
 });
 
 httpServer.listen(config.port, () => {
-  console.log(`Heng Charoen Phuetphon Fuel Management API multi-branch-v63-gps running on port ${config.port}`);
+  console.log(`Heng Charoen Phuetphon Fuel Management API multi-branch-v64-satellite-route running on port ${config.port}`);
 });
