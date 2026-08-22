@@ -91,12 +91,14 @@ function RouteMap({ origin, destination, route, onMapPick }) {
   return <div ref={mapNode} className="route-live-map" aria-label="แผนที่ดาวเทียมและเส้นทางรถยนต์" />;
 }
 
-export default function RouteDistancePlanner({ onDistance }) {
+export default function RouteDistancePlanner({ onDistance, onRoute, compact = false }) {
   const [origin, setOrigin] = useState(null);
   const [destination, setDestination] = useState(null);
   const [route, setRoute] = useState(null);
   const [busy, setBusy] = useState(false);
   const [status, setStatus] = useState(null);
+  const calculatedKeyRef = useRef('');
+  const requestKeyRef = useRef('');
   useEffect(() => { api.mapStatus().then((result) => setStatus(result.data)).catch(() => {}); }, []);
   async function pickFromMap(lat, lon) {
     try {
@@ -109,16 +111,24 @@ export default function RouteDistancePlanner({ onDistance }) {
       setRoute(null);
     }
   }
-  async function calculate() {
+  async function calculate(force = false) {
     if (!origin || !destination) return alertError(new Error('กรุณาเลือกต้นทางและปลายทางให้ครบ'), 'ข้อมูลเส้นทางไม่ครบ');
+    const key = `${origin.lat},${origin.lon}|${destination.lat},${destination.lon}`;
+    if (!force && (calculatedKeyRef.current === key || requestKeyRef.current === key)) return;
+    requestKeyRef.current = key;
     setBusy(true);
-    try { const result = await api.calculateRoute(origin.lat, origin.lon, destination.lat, destination.lon); setRoute(result.data); onDistance(result.data.distance_km); }
-    catch (error) { alertError(error, 'คำนวณเส้นทางไม่สำเร็จ'); }
-    finally { setBusy(false); }
+    try { const result = await api.calculateRoute(origin.lat, origin.lon, destination.lat, destination.lon); calculatedKeyRef.current = key; setRoute(result.data); onDistance?.(result.data.distance_km); onRoute?.({ origin, destination, ...result.data }); }
+    catch (error) { requestKeyRef.current = ''; alertError(error, 'คำนวณเส้นทางไม่สำเร็จ'); }
+    finally { requestKeyRef.current = ''; setBusy(false); }
   }
-  return <section className="route-planner-card">
+  useEffect(() => {
+    if (!origin || !destination) return undefined;
+    const timer = window.setTimeout(() => calculate(false), 450);
+    return () => window.clearTimeout(timer);
+  }, [origin?.lat, origin?.lon, destination?.lat, destination?.lon]);
+  return <section className={`route-planner-card ${compact ? 'is-compact' : ''}`}>
     <div className="route-planner-head"><div><span><Navigation size={21} /></span><div><h2>GPS ตรวจสอบระยะทาง</h2><p>ค้นหาต้นทาง–ปลายทาง แล้วคำนวณกิโลเมตรตามเส้นทางรถยนต์</p></div></div><b>ROUTE VERIFIED</b></div>
     {status && <div className={`route-provider-status ${status.google_enabled ? 'is-google' : 'is-fallback'}`}><ShieldCheck size={16} /><span><b>{status.search_provider}</b> · คำนวณด้วย {status.route_provider}</span></div>}
-    <div className="route-planner-body"><div className="route-pickers"><PointPicker title="ต้นทาง" point={origin} onPick={(p) => { setOrigin(p); setRoute(null); }} allowGps /><PointPicker title="ปลายทาง" point={destination} onPick={(p) => { setDestination(p); setRoute(null); }} /><p className="route-map-hint">ค้นหาชื่อทั่วโลก, กรอก “ละติจูด, ลองจิจูด” หรือคลิกบนแผนที่เพื่อกำหนดจุดเอง</p><button type="button" className="route-calculate-button" onClick={calculate} disabled={busy || !origin || !destination}>{busy ? <LoaderCircle className="spin" size={19} /> : <Route size={19} />} คำนวณระยะทางและค่าน้ำมัน</button>{route && <div className="route-proof"><div><small>ระยะทางตามถนน</small><strong>{number(route.distance_km, 2)} <span>กม.</span></strong></div><div><small>เวลาโดยประมาณ</small><strong>{Math.floor(route.duration_minutes / 60) ? `${Math.floor(route.duration_minutes / 60)} ชม. ` : ''}{route.duration_minutes % 60} นาที</strong></div><a href={googleDirectionsUrl(origin, destination)} target="_blank" rel="noreferrer"><ExternalLink size={16} /> เปิดตรวจสอบใน Google Maps</a><p>คำนวณเมื่อ {new Date(route.calculated_at).toLocaleString('th-TH')} · {route.provider}</p></div>}</div><div className="route-map-panel"><RouteMap origin={origin} destination={destination} route={route} onMapPick={pickFromMap} /></div></div>
+    <div className="route-planner-body"><div className="route-pickers"><PointPicker title="ต้นทาง" point={origin} onPick={(p) => { setOrigin(p); setRoute(null); }} allowGps /><PointPicker title="ปลายทาง" point={destination} onPick={(p) => { setDestination(p); setRoute(null); }} /><p className="route-map-hint">ค้นหาชื่อทั่วโลก, กรอกพิกัด หรือคลิกบนแผนที่ — เมื่อเลือกครบ 2 จุด ระบบคำนวณให้อัตโนมัติ</p><button type="button" className="route-calculate-button" onClick={() => calculate(true)} disabled={busy || !origin || !destination}>{busy ? <LoaderCircle className="spin" size={19} /> : <Route size={19} />} {busy ? 'กำลังคำนวณอัตโนมัติ…' : route ? 'ตรวจสอบเส้นทางใหม่' : 'รอเลือกต้นทางและปลายทาง'}</button>{route && <div className="route-proof"><div><small>ระยะทางตามถนน</small><strong>{number(route.distance_km, 2)} <span>กม.</span></strong></div><div><small>เวลาโดยประมาณ</small><strong>{Math.floor(route.duration_minutes / 60) ? `${Math.floor(route.duration_minutes / 60)} ชม. ` : ''}{route.duration_minutes % 60} นาที</strong></div><a href={googleDirectionsUrl(origin, destination)} target="_blank" rel="noreferrer"><ExternalLink size={16} /> เปิดตรวจสอบใน Google Maps</a><p>คำนวณอัตโนมัติเมื่อ {new Date(route.calculated_at).toLocaleString('th-TH')} · {route.provider}</p></div>}</div><div className="route-map-panel"><RouteMap origin={origin} destination={destination} route={route} onMapPick={pickFromMap} /></div></div>
   </section>;
 }

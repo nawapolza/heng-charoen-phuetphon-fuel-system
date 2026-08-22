@@ -904,6 +904,12 @@ async function normalizeDeliveryBody(db, body, files = {}, user, existing = {}, 
     price_baht_per_liter: priceBahtPerLiter,
     amount_baht: amountBaht,
     distance_km: distanceKm,
+    gps_origin_lat: toNumber(body.gps_origin_lat, toNumber(existing.gps_origin_lat, 0)),
+    gps_origin_lon: toNumber(body.gps_origin_lon, toNumber(existing.gps_origin_lon, 0)),
+    gps_destination_lat: toNumber(body.gps_destination_lat, toNumber(existing.gps_destination_lat, 0)),
+    gps_destination_lon: toNumber(body.gps_destination_lon, toNumber(existing.gps_destination_lon, 0)),
+    gps_route_provider: cleanString(body.gps_route_provider, existing.gps_route_provider || ''),
+    gps_calculated_at: cleanString(body.gps_calculated_at, existing.gps_calculated_at || ''),
     expected_fuel_efficiency_km_per_liter: expectedFuelEfficiency,
     estimated_distance_km: estimatedDistanceKm,
     recommended_fuel_liters: recommendedFuelLiters,
@@ -2433,5 +2439,5 @@ app.use((err, _req, res, _next) => {
 });
 
 httpServer.listen(config.port, () => {
-  console.log(`Heng Charoen Phuetphon Fuel Management API v65-google-global-route running on port ${config.port}`);
+  console.log(`Heng Charoen Phuetphon Fuel Management API v67-auto-route running on port ${config.port}`);
 });
