@@ -2543,5 +2543,5 @@ app.use((err, _req, res, _next) => {
 });
 
 httpServer.listen(config.port, () => {
-  console.log(`Heng Charoen Phuetphon Fuel Management API v72-gps-containment running on port ${config.port}`);
+  console.log(`Heng Charoen Phuetphon Fuel Management API v73-mobile-viewport running on port ${config.port}`);
 });

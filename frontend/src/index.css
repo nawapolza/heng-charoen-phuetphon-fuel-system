@@ -6637,3 +6637,119 @@ button, input, select, textarea { max-width: 100%; font: inherit; }
   .route-planner-card.is-compact .route-search-row .btn-soft { width: 2.55rem !important; min-width: 2.55rem !important; max-width: 2.55rem !important; }
   .route-map-selection { width: calc(100% - 3.8rem); }
 }
+
+/* V73 — mobile-only viewport containment; desktop intentionally unchanged */
+@media (max-width: 768px) {
+  html, body, #root,
+  .nova-app, .nova-workspace, .nova-main,
+  .page-shell, .mobile-form-card, .app-form-card {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+  }
+  html, body, #root, .nova-app, .nova-workspace { overflow-x: hidden !important; }
+  .nova-workspace { margin: 0 !important; }
+  .nova-topbar { left: 0 !important; right: 0 !important; width: 100% !important; max-width: 100% !important; }
+  .nova-main {
+    margin: 0 !important;
+    padding: .62rem max(.6rem, env(safe-area-inset-right)) max(6.65rem, calc(env(safe-area-inset-bottom) + 6rem)) max(.6rem, env(safe-area-inset-left)) !important;
+    overflow-x: hidden !important;
+  }
+  .app-form-card {
+    margin: 0 !important;
+    border-radius: .9rem !important;
+    overflow: hidden !important;
+  }
+  .app-form-card > *,
+  .app-form-hero, .app-form-body,
+  .form-content-stack, .form-section-card,
+  .section-head, .section-fields,
+  .form-field, .form-field-input-wrap,
+  .smart-date-field, .smart-date-box,
+  .file-picker-card, .job-workspace,
+  .delivery-gps-compact {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+  }
+  .app-form-hero { padding: .78rem !important; overflow: hidden !important; }
+  .app-form-body { padding: .58rem !important; overflow: hidden !important; }
+  .form-content-stack { gap: .65rem !important; }
+  .form-section-card { padding: 0 !important; overflow: hidden !important; }
+  .section-head { padding: .68rem !important; }
+  .app-form-card .section-fields,
+  .app-form-card .field-grid,
+  .app-form-card .supplemental-grid,
+  :root[data-device="mobile"] .app-form-card .field-grid {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) !important;
+    gap: .72rem !important;
+    padding: .72rem !important;
+    overflow: hidden !important;
+  }
+  .app-form-card .section-fields > *,
+  .app-form-card .field-grid > *,
+  .app-form-card .supplemental-grid > * {
+    grid-column: 1 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+  }
+  .app-form-card .input,
+  .app-form-card select.input,
+  .app-form-card textarea.input,
+  .app-form-card .readonly-value,
+  .app-form-card .smart-date-box {
+    display: block;
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    margin-inline: 0 !important;
+    box-sizing: border-box !important;
+  }
+  .form-progress-strip,
+  .app-form-card .form-progress-strip {
+    position: sticky;
+    top: 4.35rem;
+    display: grid !important;
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    gap: .4rem !important;
+    overflow: hidden !important;
+    padding: .55rem .62rem !important;
+  }
+  .form-progress-item,
+  .app-form-card .form-progress-item {
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+    min-height: 2.7rem !important;
+    justify-content: flex-start !important;
+    padding: .38rem .45rem !important;
+    overflow: hidden !important;
+  }
+  .form-progress-number { width: 1.8rem !important; height: 1.8rem !important; flex: 0 0 1.8rem !important; }
+  .form-progress-icon { display: none !important; }
+  .form-progress-label {
+    min-width: 0 !important;
+    overflow: hidden !important;
+    font-size: .62rem !important;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
+  }
+  .nova-mobile-dock { max-width: calc(100% - 1.1rem) !important; }
+}
+
+@media (max-width: 390px) {
+  .form-progress-strip,
+  .app-form-card .form-progress-strip { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+  .form-progress-item:last-child { grid-column: 1 / -1 !important; }
+  .nova-main { padding-inline: .42rem !important; }
+  .app-form-body { padding: .45rem !important; }
+  .app-form-card .section-fields,
+  .app-form-card .field-grid,
+  .app-form-card .supplemental-grid { padding: .58rem !important; }
+}
