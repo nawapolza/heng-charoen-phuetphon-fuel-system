@@ -711,6 +711,14 @@ input, textarea, select {
   }
 }
 
+/* V76 automatic Google link import and place memory */
+.route-selected b { color: #86efac; font-weight: 950; }
+.route-search-results button:has(.lucide-bookmark-check) { background: #f3f8ff; }
+.route-google-import > p { border-radius: .65rem; background: rgba(34, 197, 94, .12); padding: .45rem .55rem; }
+.route-map-panel .route-pin-label { max-width: 15rem; overflow: hidden; border: 1px solid #cbd8e8; border-radius: .55rem; background: rgba(255,255,255,.96); padding: .34rem .5rem; color: #173552; font-family: inherit; font-size: .64rem; font-weight: 900; text-overflow: ellipsis; white-space: nowrap; box-shadow: 0 6px 16px rgba(19,51,83,.18); }
+.route-map-panel .route-pin-label::before { border-top-color: rgba(255,255,255,.96); }
+@media (max-width: 480px) { .route-map-panel .route-pin-label { max-width: 9rem; font-size: .56rem; } }
+
 /* จอกว้างขึ้น ใช้ 2 คอลัมน์ตามแนว professional แต่ยังคุมไม่ให้ label/input ทับ */
 @media (min-width: 481px) and (max-width: 767px) {
   .field-grid,

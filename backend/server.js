@@ -2583,5 +2583,5 @@ app.use((err, _req, res, _next) => {
 });
 
 httpServer.listen(config.port, () => {
-  console.log(`Heng Charoen Phuetphon Fuel Management API v75-map-rendering running on port ${config.port}`);
+  console.log(`Heng Charoen Phuetphon Fuel Management API v76-map-link-memory running on port ${config.port}`);
 });

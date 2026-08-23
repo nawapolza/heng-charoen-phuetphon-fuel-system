@@ -1,7 +1,7 @@
-import { Crosshair, ExternalLink, Link2, LoaderCircle, MapPin, Navigation, PencilLine, Route, Search, ShieldCheck } from 'lucide-react';
+import { BookmarkCheck, Crosshair, ExternalLink, Link2, LoaderCircle, MapPin, Navigation, PencilLine, Route, Search, ShieldCheck } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { api } from '../api.js';
-import { alertError } from '../utils/alerts.js';
+import { alertError, toastInfo } from '../utils/alerts.js';
 import { number } from '../utils/format.js';
 
 function googleDirectionsUrl(origin, destination) {
@@ -9,19 +9,37 @@ function googleDirectionsUrl(origin, destination) {
   return `https://www.google.com/maps/dir/?api=1&origin=${origin.lat},${origin.lon}&destination=${destination.lat},${destination.lon}&travelmode=driving`;
 }
 
-function PointPicker({ title, point, onPick, onRename, allowGps = false, kind = 'origin' }) {
+const RECENT_PLACES_KEY = 'heng-route-remembered-places-v2';
+const isGoogleMapsInput = (value = '') => /(?:maps\.app\.goo\.gl|goo\.gl|google\.[a-z.]+\/maps|google\.navigation:|^geo:|^intent:\/\/)/i.test(String(value).trim());
+function rememberedPlaces() {
+  try { return JSON.parse(localStorage.getItem(RECENT_PLACES_KEY) || '[]').filter((row) => Number.isFinite(Number(row.lat)) && Number.isFinite(Number(row.lon))).slice(0, 20); } catch (_) { return []; }
+}
+function rememberPlace(point) {
+  if (!point) return;
+  const id = String(point.id || `${point.lat},${point.lon}`);
+  const next = [{ ...point, id, remembered_at: new Date().toISOString() }, ...rememberedPlaces().filter((row) => String(row.id) !== id && `${row.lat},${row.lon}` !== `${point.lat},${point.lon}`)].slice(0, 20);
+  localStorage.setItem(RECENT_PLACES_KEY, JSON.stringify(next));
+}
+
+function PointPicker({ title, point, onPick, onRename, onGoogleLink, allowGps = false, kind = 'origin' }) {
   const [query, setQuery] = useState('');
   const [rows, setRows] = useState([]);
   const [busy, setBusy] = useState(false);
+  function selectPoint(row, notify = false) {
+    rememberPlace(row); onPick(row); setQuery(row.name); setRows([]);
+    if (notify) toastInfo('จดจำสถานที่แล้ว · ครั้งหน้าพิมพ์ชื่อได้ทันที');
+  }
   async function search() {
-    if (query.trim().length < 2) return;
-    const coordinateMatch = query.trim().match(/^(-?\d{1,2}(?:\.\d+)?)\s*[, ]\s*(-?\d{1,3}(?:\.\d+)?)$/);
+    const normalized = query.trim();
+    if (normalized.length < 2) return;
+    if (isGoogleMapsInput(normalized)) return onGoogleLink?.(normalized);
+    const coordinateMatch = normalized.match(/^(-?\d{1,2}(?:\.\d+)?)\s*[, ]\s*(-?\d{1,3}(?:\.\d+)?)$/);
     if (coordinateMatch) {
       const lat = Number(coordinateMatch[1]); const lon = Number(coordinateMatch[2]);
-      if (lat >= -90 && lat <= 90 && lon >= -180 && lon <= 180) { onPick({ id: `coordinate-${lat}-${lon}`, name: `พิกัด ${lat}, ${lon}`, lat, lon, type: 'coordinate', provider: 'พิกัดโดยตรง' }); setRows([]); return; }
+      if (lat >= -90 && lat <= 90 && lon >= -180 && lon <= 180) { selectPoint({ id: `coordinate-${lat}-${lon}`, name: `พิกัด ${lat}, ${lon}`, lat, lon, type: 'coordinate', provider: 'พิกัดโดยตรง' }, true); return; }
     }
     setBusy(true);
-    try { const result = await api.searchPlaces(query); setRows(result.data || []); }
+    try { const result = await api.searchPlaces(normalized); setRows(result.data || []); }
     catch (error) { alertError(error, 'ค้นหาสถานที่ไม่สำเร็จ'); }
     finally { setBusy(false); }
   }
@@ -32,17 +50,23 @@ function PointPicker({ title, point, onPick, onRename, allowGps = false, kind = 
       try {
         const result = await api.reversePlace(coords.latitude, coords.longitude);
         const point = { ...result.data, accuracy_m: Math.round(Number(coords.accuracy || 0)), captured_at: new Date().toISOString() };
-        onPick(point); setQuery(point.name); setRows([]);
+        selectPoint(point, true);
       }
       catch (error) { alertError(error, 'อ่านตำแหน่ง GPS ไม่สำเร็จ'); }
       finally { setBusy(false); }
     }, (error) => { setBusy(false); alertError(error, 'กรุณาอนุญาตการเข้าถึงตำแหน่งในเบราว์เซอร์ และเปิดโหมดตำแหน่งความแม่นยำสูง'); }, { enableHighAccuracy: true, timeout: 20000, maximumAge: 0 });
   }
+  function updateQuery(value) {
+    setQuery(value);
+    if (!value.trim() || isGoogleMapsInput(value)) { setRows([]); return; }
+    const keyword = value.trim().toLocaleLowerCase('th-TH');
+    setRows(rememberedPlaces().filter((row) => String(row.name || '').toLocaleLowerCase('th-TH').includes(keyword)).map((row) => ({ ...row, isRemembered: true })));
+  }
   return <div className={`route-point-picker is-${kind}`}>
     <div className="route-point-title"><span><MapPin size={17} /></span><div><strong>{title}</strong><small>{point ? `${number(point.lat, 5)}, ${number(point.lon, 5)}` : 'ค้นหาแล้วเลือกจากรายการ'}</small></div></div>
-    <div className="route-search-row"><input className="input" value={query} onChange={(e) => setQuery(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), search())} placeholder="ชื่อบริษัท อำเภอ จังหวัด หรือที่อยู่" /><button type="button" className="btn-soft" onClick={search} disabled={busy}>{busy ? <LoaderCircle className="spin" size={17} /> : <Search size={17} />}</button>{allowGps && <button type="button" className="btn-soft route-gps-button" onClick={useGps} disabled={busy} title="ใช้ GPS ปัจจุบัน"><Crosshair size={17} /></button>}</div>
-    {rows.length > 0 && <div className="route-search-results">{rows.map((row) => <button type="button" key={`${row.provider}-${row.id}`} onClick={() => { onPick(row); setQuery(row.name); setRows([]); }}><MapPin size={15} /><span>{row.name}<small>{row.provider || 'แหล่งข้อมูลแผนที่'}</small></span></button>)}</div>}
-    {point && <div className="route-selected"><ShieldCheck size={15} /><span>{point.name}{point.accuracy_m ? <small className={point.accuracy_m <= 30 ? 'is-precise' : 'is-warning'}>GPS ±{point.accuracy_m} ม. · {point.accuracy_m <= 30 ? 'ความแม่นยำสูง' : 'ควรรอจับสัญญาณกลางแจ้ง'}</small> : null}</span></div>}
+    <div className="route-search-row"><input className="input" value={query} onFocus={() => { if (!query) setRows(rememberedPlaces().map((row) => ({ ...row, isRemembered: true }))); }} onChange={(e) => updateQuery(e.target.value)} onPaste={(event) => { const pasted = event.clipboardData.getData('text').trim(); if (isGoogleMapsInput(pasted)) { event.preventDefault(); setQuery(pasted); onGoogleLink?.(pasted); } }} onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), search())} placeholder="ชื่อสถานที่ หรือวางลิงก์ Google Maps" /><button type="button" className="btn-soft" onClick={search} disabled={busy}>{busy ? <LoaderCircle className="spin" size={17} /> : isGoogleMapsInput(query) ? <Link2 size={17} /> : <Search size={17} />}</button>{allowGps && <button type="button" className="btn-soft route-gps-button" onClick={useGps} disabled={busy} title="ใช้ GPS ปัจจุบัน"><Crosshair size={17} /></button>}</div>
+    {rows.length > 0 && <div className="route-search-results">{rows.map((row) => <button type="button" key={`${row.provider}-${row.id}-${row.lat}`} onClick={() => selectPoint(row, !row.isRemembered)}>{row.isRemembered ? <BookmarkCheck size={15} /> : <MapPin size={15} />}<span>{row.name}<small>{row.isRemembered ? 'สถานที่ที่จดจำไว้' : row.provider || 'แหล่งข้อมูลแผนที่'}</small></span></button>)}</div>}
+    {point && <div className="route-selected"><BookmarkCheck size={15} /><span><b>จดจำแล้ว</b> · {point.name}{point.accuracy_m ? <small className={point.accuracy_m <= 30 ? 'is-precise' : 'is-warning'}>GPS ±{point.accuracy_m} ม. · {point.accuracy_m <= 30 ? 'ความแม่นยำสูง' : 'ควรรอจับสัญญาณกลางแจ้ง'}</small> : null}</span></div>}
     {point && <label className="route-pin-name"><span><PencilLine size={14} /> ตั้งชื่อหมุดนี้</span><input className="input" value={point.name || ''} onChange={(event) => onRename?.(event.target.value)} placeholder={`ชื่อ${title} เช่น โรงงาน / บริษัท / จุดรับสินค้า`} maxLength={180} /></label>}
   </div>;
 }
@@ -87,8 +111,8 @@ function RouteMap({ origin, destination, route, onMapPick, activeTarget }) {
     const group = L.featureGroup().addTo(map);
     routeLayer.current = group;
     const pin = (kind, label) => L.divIcon({ className: '', html: `<div class="route-map-pin is-${kind}"><span>${label}</span></div>`, iconSize: [34, 42], iconAnchor: [17, 39] });
-    if (origin) L.marker([origin.lat, origin.lon], { icon: pin('origin', 'A'), title: 'ต้นทาง' }).bindTooltip('ต้นทาง', { direction: 'top' }).addTo(group);
-    if (destination) L.marker([destination.lat, destination.lon], { icon: pin('destination', 'B'), title: 'ปลายทาง' }).bindTooltip('ปลายทาง', { direction: 'top' }).addTo(group);
+    if (origin) L.marker([origin.lat, origin.lon], { icon: pin('origin', 'A'), title: origin.name || 'ต้นทาง' }).bindTooltip(origin.name || 'ต้นทาง', { direction: 'top', permanent: true, className: 'route-pin-label', offset: [0, -34] }).addTo(group);
+    if (destination) L.marker([destination.lat, destination.lon], { icon: pin('destination', 'B'), title: destination.name || 'ปลายทาง' }).bindTooltip(destination.name || 'ปลายทาง', { direction: 'top', permanent: true, className: 'route-pin-label', offset: [0, -34] }).addTo(group);
     const line = (route?.geometry || []).map(([lon, lat]) => [lat, lon]);
     if (line.length > 1) {
       L.polyline(line, { pane: 'routePane', color: '#ffffff', weight: 12, opacity: .96, lineJoin: 'round', lineCap: 'round', interactive: false }).addTo(group);
@@ -116,20 +140,24 @@ export default function RouteDistancePlanner({ onDistance, onRoute, compact = fa
   const calculatedKeyRef = useRef('');
   const requestKeyRef = useRef('');
   useEffect(() => { api.mapStatus().then((result) => setStatus(result.data)).catch(() => {}); }, []);
-  async function importGoogleLink() {
-    if (!googleLink.trim()) return alertError(new Error('กรุณาวางลิงก์ที่คัดลอกจาก Google Maps'), 'ยังไม่มีลิงก์');
+  async function importGoogleLink(value = googleLink, requestedTarget = activeTarget) {
+    const linkValue = String(value || '').trim();
+    if (!linkValue) return alertError(new Error('กรุณาวางลิงก์ที่คัดลอกจาก Google Maps'), 'ยังไม่มีลิงก์');
+    setGoogleLink(linkValue);
     setImportingLink(true); setImportMessage('');
     try {
-      const result = await api.importGoogleMapsLink(googleLink.trim());
+      const result = await api.importGoogleMapsLink(linkValue);
       const imported = result.data || {};
-      if (imported.origin) setOrigin(imported.origin);
-      if (imported.destination) setDestination(imported.destination);
+      if (imported.origin) { setOrigin(imported.origin); rememberPlace(imported.origin); }
+      if (imported.destination) { setDestination(imported.destination); rememberPlace(imported.destination); }
       if (imported.point) {
-        if (activeTarget === 'origin') { setOrigin(imported.point); setActiveTarget('destination'); }
+        rememberPlace(imported.point);
+        if (requestedTarget === 'origin') { setOrigin(imported.point); setActiveTarget('destination'); }
         else setDestination(imported.point);
       }
       setRoute(null);
-      setImportMessage(imported.origin && imported.destination ? 'นำเข้าต้นทางและปลายทางจาก Google Maps แล้ว' : `นำเข้าหมุดเป็น${activeTarget === 'origin' ? 'ต้นทาง' : 'ปลายทาง'}แล้ว`);
+      setImportMessage(imported.origin && imported.destination ? 'ปักหมุดเส้นทางและจดจำต้นทาง–ปลายทางแล้ว' : `ปักหมุดเป็น${requestedTarget === 'origin' ? 'ต้นทาง' : 'ปลายทาง'}และจดจำสถานที่แล้ว`);
+      toastInfo('จดจำสถานที่แล้ว · ระบบปักหมุดให้เรียบร้อย');
     } catch (error) { alertError(error, 'นำเข้าลิงก์ Google Maps ไม่สำเร็จ'); }
     finally { setImportingLink(false); }
   }
@@ -169,7 +197,7 @@ export default function RouteDistancePlanner({ onDistance, onRoute, compact = fa
     {status && <div className={`route-provider-status ${status.google_enabled ? 'is-google' : 'is-fallback'}`}><ShieldCheck size={16} /><span><b>{status.search_provider}</b> · คำนวณด้วย {status.route_provider}</span></div>}
     <div className="route-google-import">
       <div className="route-google-import-head"><span><Link2 size={17} /></span><div><strong>นำเข้าจาก Google Maps</strong><small>วางได้ทั้งลิงก์ ข้อความแชร์ ลิงก์สั้น หรือ Intent จากมือถือ ระบบจัดรูปแบบให้อัตโนมัติ</small></div></div>
-      <div className="route-google-import-row"><input className="input" type="text" inputMode="url" autoCapitalize="none" autoCorrect="off" value={googleLink} onChange={(event) => setGoogleLink(event.target.value)} onKeyDown={(event) => event.key === 'Enter' && (event.preventDefault(), importGoogleLink())} placeholder="วางข้อความหรือลิงก์จาก Google Maps ที่นี่" /><button type="button" onClick={importGoogleLink} disabled={importingLink}>{importingLink ? <LoaderCircle className="spin" size={17} /> : <Link2 size={17} />} {importingLink ? 'กำลังอ่านลิงก์…' : 'นำเข้าเส้นทาง'}</button></div>
+      <div className="route-google-import-row"><input className="input" type="text" inputMode="url" autoCapitalize="none" autoCorrect="off" value={googleLink} onChange={(event) => setGoogleLink(event.target.value)} onPaste={(event) => { const pasted = event.clipboardData.getData('text').trim(); if (isGoogleMapsInput(pasted)) { event.preventDefault(); setGoogleLink(pasted); importGoogleLink(pasted); } }} onKeyDown={(event) => event.key === 'Enter' && (event.preventDefault(), importGoogleLink())} placeholder="วางข้อความหรือลิงก์จาก Google Maps — ระบบอ่านทันที" /><button type="button" onClick={() => importGoogleLink()} disabled={importingLink}>{importingLink ? <LoaderCircle className="spin" size={17} /> : <Link2 size={17} />} {importingLink ? 'กำลังอ่านลิงก์…' : 'นำเข้าและจดจำ'}</button></div>
       {importMessage && <p><ShieldCheck size={14} /> {importMessage}</p>}
     </div>
     <div className="route-pin-mode" role="group" aria-label="เลือกชนิดหมุดที่จะปักบนแผนที่">
@@ -179,8 +207,8 @@ export default function RouteDistancePlanner({ onDistance, onRoute, compact = fa
     </div>
     <div className="route-planner-body">
       <div className="route-pickers">
-        <PointPicker title="ต้นทาง" kind="origin" point={origin} onPick={pickOrigin} onRename={(name) => setOrigin((current) => ({ ...current, name }))} allowGps />
-        <PointPicker title="ปลายทาง" kind="destination" point={destination} onPick={pickDestination} onRename={(name) => setDestination((current) => ({ ...current, name }))} />
+        <PointPicker title="ต้นทาง" kind="origin" point={origin} onPick={pickOrigin} onRename={(name) => setOrigin((current) => ({ ...current, name }))} onGoogleLink={(link) => importGoogleLink(link, 'origin')} allowGps />
+        <PointPicker title="ปลายทาง" kind="destination" point={destination} onPick={pickDestination} onRename={(name) => setDestination((current) => ({ ...current, name }))} onGoogleLink={(link) => importGoogleLink(link, 'destination')} />
         <p className="route-map-hint">ค้นหาชื่อทั่วโลก, กรอกพิกัด 6 ตำแหน่ง หรือเลือก A/B แล้วคลิกแผนที่ จากนั้นตั้งชื่อหมุดเองได้</p>
         <button type="button" className="route-calculate-button" onClick={() => calculate(true)} disabled={busy || !origin || !destination}>{busy ? <LoaderCircle className="spin" size={19} /> : <Route size={19} />} {busy ? 'กำลังคำนวณอัตโนมัติ…' : route ? 'ตรวจสอบเส้นทางใหม่' : 'รอเลือกต้นทางและปลายทาง'}</button>
         {route && <div className="route-proof"><div><small>ระยะทางตามถนน</small><strong>{number(route.distance_km, 2)} <span>กม.</span></strong></div><div><small>เวลาโดยประมาณ</small><strong>{Math.floor(route.duration_minutes / 60) ? `${Math.floor(route.duration_minutes / 60)} ชม. ` : ''}{route.duration_minutes % 60} นาที</strong></div><a href={googleDirectionsUrl(origin, destination)} target="_blank" rel="noreferrer"><ExternalLink size={16} /> เปิดตรวจสอบใน Google Maps</a><p>{route.route_quality || 'คำนวณตามเครือข่ายถนน'} · {new Date(route.calculated_at).toLocaleString('th-TH')} · {route.provider}</p></div>}
