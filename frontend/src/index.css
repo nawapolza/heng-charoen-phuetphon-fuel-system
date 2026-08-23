@@ -719,6 +719,25 @@ input, textarea, select {
 .route-map-panel .route-pin-label::before { border-top-color: rgba(255,255,255,.96); }
 @media (max-width: 480px) { .route-map-panel .route-pin-label { max-width: 9rem; font-size: .56rem; } }
 
+/* V77 explicit imported-route selection */
+.route-import-choice,
+.route-current-origin { display: grid; gap: .55rem; border: 1px solid rgba(125,211,252,.28); border-radius: .85rem; background: rgba(4,25,57,.6); padding: .65rem; }
+.route-import-choice > span,
+.route-current-origin > span { display: grid; grid-template-columns: auto minmax(0,1fr); align-items: center; gap: .4rem; color: #dbeeff; font-size: .67rem; }
+.route-import-choice > span svg,
+.route-current-origin > span svg { grid-row: 1 / span 2; color: #7dd3fc; }
+.route-import-choice > span b { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.route-current-origin > span small { color: #9fc9e8; font-size: .59rem; font-weight: 750; }
+.route-import-choice > div { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: .45rem; }
+.route-import-choice button,
+.route-current-origin > button { display: flex; min-height: 2.55rem; align-items: center; justify-content: center; gap: .4rem; border: 0; border-radius: .68rem; color: #fff; font-family: inherit; font-size: .65rem; font-weight: 950; cursor: pointer; }
+.route-import-choice button i { display: grid; width: 1.35rem; height: 1.35rem; place-items: center; border-radius: .38rem; background: rgba(255,255,255,.2); font-style: normal; }
+.route-import-choice button.is-origin { background: linear-gradient(135deg,#2679e7,#1557b8); }
+.route-import-choice button.is-destination { background: linear-gradient(135deg,#f05252,#c82929); }
+.route-current-origin > button { background: linear-gradient(135deg,#0f9f70,#087858); }
+.route-current-origin > button:disabled { opacity: .65; cursor: wait; }
+@media (max-width: 430px) { .route-import-choice > div { grid-template-columns: 1fr; } }
+
 /* จอกว้างขึ้น ใช้ 2 คอลัมน์ตามแนว professional แต่ยังคุมไม่ให้ label/input ทับ */
 @media (min-width: 481px) and (max-width: 767px) {
   .field-grid,

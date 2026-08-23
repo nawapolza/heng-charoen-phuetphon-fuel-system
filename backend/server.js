@@ -1706,10 +1706,34 @@ function coordinatesFromText(value = '') {
   return { lat, lon };
 }
 
+function isDynamicCurrentLocation(value = '') {
+  const normalized = decodeURIComponent(String(value || '').replace(/\+/g, ' ')).trim().toLowerCase();
+  return !normalized || [
+    'my location', 'your location', 'current location',
+    'ตำแหน่งของคุณ', 'ตำแหน่งปัจจุบัน', 'สถานที่ของคุณ',
+  ].some((token) => normalized === token || normalized.includes(token));
+}
+
 async function geocodeImportedPlace(value, label) {
   const decoded = decodeURIComponent(String(value || '').replace(/\+/g, ' ')).trim();
   const coordinates = coordinatesFromText(decoded);
-  if (coordinates) return { id: `google-link-${coordinates.lat}-${coordinates.lon}`, name: label || decoded, ...coordinates, provider: 'Google Maps link' };
+  if (coordinates) {
+    const genericLabel = !label || /^(ต้นทาง|ปลายทาง|หมุด)จาก Google Maps$/.test(label);
+    if (genericLabel && config.maps.googleApiKey) {
+      try {
+        const payload = await googleMapsJson(`https://maps.googleapis.com/maps/api/geocode/json?latlng=${coordinates.lat},${coordinates.lon}&language=th&key=${encodeURIComponent(config.maps.googleApiKey)}`);
+        const row = payload.results?.[0];
+        if (row) return { id: row.place_id || `google-link-${coordinates.lat}-${coordinates.lon}`, name: row.formatted_address || decoded, ...coordinates, provider: 'Google Maps link + Google Geocoding' };
+      } catch (error) { console.warn('Google imported coordinate reverse fallback:', error.message); }
+    }
+    if (genericLabel) {
+      try {
+        const row = await mapFetchJson(`${config.maps.geocodingUrl}/reverse?format=jsonv2&zoom=18&addressdetails=1&accept-language=th,en&lat=${coordinates.lat}&lon=${coordinates.lon}`);
+        if (row?.display_name) return { id: `osm-${row.place_id || `${coordinates.lat}-${coordinates.lon}`}`, name: row.display_name, ...coordinates, provider: 'Google Maps link + OpenStreetMap' };
+      } catch (error) { console.warn('OSM imported coordinate reverse fallback:', error.message); }
+    }
+    return { id: `google-link-${coordinates.lat}-${coordinates.lon}`, name: label || decoded, ...coordinates, provider: 'Google Maps link' };
+  }
   if (!decoded) return null;
   if (config.maps.googleApiKey) {
     try {
@@ -1733,12 +1757,19 @@ router.post('/maps/import-google-link', requireAuth, asyncHandler(async (req, re
   const params = expanded.searchParams;
   let originText = params.get('origin') || '';
   let destinationText = params.get('destination') || '';
+  const rawDirMatch = expanded.pathname.match(/\/dir\/([^/]*)\/([^/]*)/i);
+  if (rawDirMatch) {
+    originText ||= decodeURIComponent(rawDirMatch[1] || '');
+    destinationText ||= decodeURIComponent(rawDirMatch[2] || '');
+  }
   const pathParts = expanded.pathname.split('/').filter(Boolean).map((part) => decodeURIComponent(part));
   const dirIndex = pathParts.indexOf('dir');
-  if (dirIndex >= 0) {
+  if (dirIndex >= 0 && !rawDirMatch) {
     originText ||= pathParts[dirIndex + 1] || '';
     destinationText ||= pathParts[dirIndex + 2] || '';
   }
+  const requiresCurrentOrigin = dirIndex >= 0 && isDynamicCurrentLocation(originText);
+  if (requiresCurrentOrigin) originText = '';
   const dataCoordinate = href.match(/!3d(-?\d+(?:\.\d+)?)!4d(-?\d+(?:\.\d+)?)/);
   const atCoordinate = href.match(/@(-?\d+(?:\.\d+)?),(-?\d+(?:\.\d+)?)/);
   const singleText = params.get('query') || params.get('q') || params.get('ll') || '';
@@ -1751,7 +1782,12 @@ router.post('/maps/import-google-link', requireAuth, asyncHandler(async (req, re
   const pointLabel = placeIndex >= 0 ? pathParts[placeIndex + 1] : 'หมุดจาก Google Maps';
   const point = (!origin && !destination && singleCoordinates) ? await geocodeImportedPlace(singleCoordinates, pointLabel || 'หมุดจาก Google Maps') : null;
   if (!origin && !destination && !point) return jsonResponse(res, { success: false, message: 'อ่านพิกัดจากลิงก์นี้ไม่ได้ กรุณาใช้ปุ่มแชร์ใน Google Maps หรือวางลิงก์เส้นทาง' }, 422);
-  jsonResponse(res, { success: true, data: { origin, destination, point, expanded_url: href, provider: 'Google Maps import' } });
+  jsonResponse(res, { success: true, data: {
+    origin, destination, point,
+    requires_current_origin: requiresCurrentOrigin,
+    suggested_target: destination ? 'destination' : origin ? 'origin' : null,
+    expanded_url: href, provider: 'Google Maps import',
+  } });
 }));
 
 router.get('/maps/search', requireAuth, asyncHandler(async (req, res) => {
@@ -2583,5 +2619,5 @@ app.use((err, _req, res, _next) => {
 });
 
 httpServer.listen(config.port, () => {
-  console.log(`Heng Charoen Phuetphon Fuel Management API v76-map-link-memory running on port ${config.port}`);
+  console.log(`Heng Charoen Phuetphon Fuel Management API v77-route-link-choice running on port ${config.port}`);
 });

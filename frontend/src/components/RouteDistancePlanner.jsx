@@ -137,14 +137,16 @@ export default function RouteDistancePlanner({ onDistance, onRoute, compact = fa
   const [googleLink, setGoogleLink] = useState('');
   const [importingLink, setImportingLink] = useState(false);
   const [importMessage, setImportMessage] = useState('');
+  const [pendingImportedPoint, setPendingImportedPoint] = useState(null);
+  const [needsCurrentOrigin, setNeedsCurrentOrigin] = useState(false);
   const calculatedKeyRef = useRef('');
   const requestKeyRef = useRef('');
   useEffect(() => { api.mapStatus().then((result) => setStatus(result.data)).catch(() => {}); }, []);
-  async function importGoogleLink(value = googleLink, requestedTarget = activeTarget) {
+  async function importGoogleLink(value = googleLink, requestedTarget = null) {
     const linkValue = String(value || '').trim();
     if (!linkValue) return alertError(new Error('กรุณาวางลิงก์ที่คัดลอกจาก Google Maps'), 'ยังไม่มีลิงก์');
     setGoogleLink(linkValue);
-    setImportingLink(true); setImportMessage('');
+    setImportingLink(true); setImportMessage(''); setPendingImportedPoint(null); setNeedsCurrentOrigin(false);
     try {
       const result = await api.importGoogleMapsLink(linkValue);
       const imported = result.data || {};
@@ -153,13 +155,46 @@ export default function RouteDistancePlanner({ onDistance, onRoute, compact = fa
       if (imported.point) {
         rememberPlace(imported.point);
         if (requestedTarget === 'origin') { setOrigin(imported.point); setActiveTarget('destination'); }
-        else setDestination(imported.point);
+        else if (requestedTarget === 'destination') setDestination(imported.point);
+        else setPendingImportedPoint(imported.point);
       }
+      setNeedsCurrentOrigin(Boolean(imported.requires_current_origin));
       setRoute(null);
-      setImportMessage(imported.origin && imported.destination ? 'ปักหมุดเส้นทางและจดจำต้นทาง–ปลายทางแล้ว' : `ปักหมุดเป็น${requestedTarget === 'origin' ? 'ต้นทาง' : 'ปลายทาง'}และจดจำสถานที่แล้ว`);
-      toastInfo('จดจำสถานที่แล้ว · ระบบปักหมุดให้เรียบร้อย');
+      if (imported.requires_current_origin && imported.destination) {
+        setImportMessage('พบปลายทางแล้ว · กำลังจับ GPS “ตำแหน่งของคุณ” เป็นต้นทาง A อัตโนมัติ');
+        window.setTimeout(() => captureCurrentOrigin(true), 0);
+      }
+      else if (imported.point && !requestedTarget) setImportMessage('อ่านหมุดแล้ว · กรุณาเลือกว่าจะใช้เป็นต้นทาง A หรือปลายทาง B');
+      else setImportMessage(imported.origin && imported.destination ? 'ปักหมุดเส้นทางและจดจำต้นทาง–ปลายทางแล้ว' : `ปักหมุดเป็น${requestedTarget === 'origin' ? 'ต้นทาง' : 'ปลายทาง'}และจดจำสถานที่แล้ว`);
+      toastInfo(imported.point && !requestedTarget ? 'อ่านลิงก์แล้ว · กรุณาเลือก A หรือ B' : 'จดจำสถานที่แล้ว · ระบบปักหมุดให้เรียบร้อย');
     } catch (error) { alertError(error, 'นำเข้าลิงก์ Google Maps ไม่สำเร็จ'); }
     finally { setImportingLink(false); }
+  }
+  function confirmImportedPoint(target) {
+    if (!pendingImportedPoint) return;
+    if (target === 'origin') { setOrigin(pendingImportedPoint); setActiveTarget('destination'); }
+    else { setDestination(pendingImportedPoint); setActiveTarget('origin'); }
+    setImportMessage(`เลือกสถานที่จากลิงก์เป็น${target === 'origin' ? 'ต้นทาง A' : 'ปลายทาง B'}และจดจำแล้ว`);
+    setPendingImportedPoint(null); setRoute(null);
+    toastInfo('เลือกหมุดและจดจำสถานที่แล้ว');
+  }
+  function captureCurrentOrigin(autoTriggered = false) {
+    if (!navigator.geolocation) return alertError(new Error('อุปกรณ์นี้ไม่รองรับ GPS'), 'ใช้ GPS ไม่ได้');
+    setImportingLink(true);
+    navigator.geolocation.getCurrentPosition(async ({ coords }) => {
+      try {
+        const result = await api.reversePlace(coords.latitude, coords.longitude);
+        const point = { ...result.data, name: `ตำแหน่งปัจจุบัน — ${result.data.name}`, accuracy_m: Math.round(Number(coords.accuracy || 0)), captured_at: new Date().toISOString() };
+        setOrigin(point); rememberPlace(point); setNeedsCurrentOrigin(false); setRoute(null); setActiveTarget('destination');
+        setImportMessage(`จับ GPS ต้นทางแล้ว (±${point.accuracy_m} ม.) · ระบบกำลังคำนวณเส้นทางอัตโนมัติ`);
+        toastInfo('จับ GPS ต้นทางและจดจำแล้ว');
+      } catch (error) { alertError(error, 'อ่านตำแหน่ง GPS ไม่สำเร็จ'); }
+      finally { setImportingLink(false); }
+    }, (error) => {
+      setImportingLink(false); setNeedsCurrentOrigin(true);
+      setImportMessage(autoTriggered ? 'ระบบยังเข้าถึงตำแหน่งไม่ได้ · กรุณาอนุญาต GPS แล้วกดปุ่มด้านล่าง' : 'ยังจับ GPS ต้นทางไม่ได้ กรุณาตรวจสอบสิทธิ์ตำแหน่ง');
+      alertError(error, 'กรุณาเปิด GPS และอนุญาตตำแหน่งความแม่นยำสูง');
+    }, { enableHighAccuracy: true, timeout: 20000, maximumAge: 0 });
   }
   async function pickFromMap(lat, lon) {
     try {
@@ -199,6 +234,8 @@ export default function RouteDistancePlanner({ onDistance, onRoute, compact = fa
       <div className="route-google-import-head"><span><Link2 size={17} /></span><div><strong>นำเข้าจาก Google Maps</strong><small>วางได้ทั้งลิงก์ ข้อความแชร์ ลิงก์สั้น หรือ Intent จากมือถือ ระบบจัดรูปแบบให้อัตโนมัติ</small></div></div>
       <div className="route-google-import-row"><input className="input" type="text" inputMode="url" autoCapitalize="none" autoCorrect="off" value={googleLink} onChange={(event) => setGoogleLink(event.target.value)} onPaste={(event) => { const pasted = event.clipboardData.getData('text').trim(); if (isGoogleMapsInput(pasted)) { event.preventDefault(); setGoogleLink(pasted); importGoogleLink(pasted); } }} onKeyDown={(event) => event.key === 'Enter' && (event.preventDefault(), importGoogleLink())} placeholder="วางข้อความหรือลิงก์จาก Google Maps — ระบบอ่านทันที" /><button type="button" onClick={() => importGoogleLink()} disabled={importingLink}>{importingLink ? <LoaderCircle className="spin" size={17} /> : <Link2 size={17} />} {importingLink ? 'กำลังอ่านลิงก์…' : 'นำเข้าและจดจำ'}</button></div>
       {importMessage && <p><ShieldCheck size={14} /> {importMessage}</p>}
+      {pendingImportedPoint && <div className="route-import-choice"><span><MapPin size={16} /><b>{pendingImportedPoint.name}</b></span><div><button type="button" className="is-origin" onClick={() => confirmImportedPoint('origin')}><i>A</i> ใช้เป็นต้นทาง</button><button type="button" className="is-destination" onClick={() => confirmImportedPoint('destination')}><i>B</i> ใช้เป็นปลายทาง</button></div></div>}
+      {needsCurrentOrigin && <div className="route-current-origin"><span><Crosshair size={17} /><b>ลิงก์นี้ใช้ “ตำแหน่งของคุณ”</b><small>Google ไม่ส่งพิกัดต้นทางมากับลิงก์ ต้องจับ GPS จากอุปกรณ์นี้</small></span><button type="button" onClick={captureCurrentOrigin} disabled={importingLink}>{importingLink ? <LoaderCircle className="spin" size={17} /> : <Crosshair size={17} />} ใช้ GPS ปัจจุบันเป็นต้นทาง A</button></div>}
     </div>
     <div className="route-pin-mode" role="group" aria-label="เลือกชนิดหมุดที่จะปักบนแผนที่">
       <button type="button" className={activeTarget === 'origin' ? 'is-active is-origin' : ''} onClick={() => setActiveTarget('origin')}><i>A</i><span><small>กำลังเลือก</small><strong>ต้นทาง</strong></span></button>

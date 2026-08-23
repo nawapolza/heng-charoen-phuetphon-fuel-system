@@ -1,6 +1,6 @@
 {
   "name": "heng-charoen-phuetphon-fuel-system",
-  "version": "76.0.0",
+  "version": "77.0.0",
   "private": true,
   "scripts": {
     "verify": "node scripts/verify-project.js",
