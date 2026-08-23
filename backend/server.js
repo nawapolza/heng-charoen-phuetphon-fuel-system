@@ -1635,21 +1635,61 @@ function isAllowedGoogleMapsHost(hostname = '') {
   return host === 'maps.app.goo.gl' || host === 'goo.gl' || host === 'google.com' || /(^|\.)google\.[a-z.]+$/.test(host);
 }
 
+function normalizeGoogleMapsInput(input = '') {
+  let value = String(input).trim().replace(/[\u200B-\u200D\uFEFF]/g, '');
+  const webLink = value.match(/https?:\/\/[^\s<>"']+/i);
+  if (webLink) value = webLink[0];
+  if (/^intent:\/\//i.test(value)) {
+    const fallback = value.match(/S\.browser_fallback_url=([^;]+)/i)?.[1];
+    if (fallback) value = decodeURIComponent(fallback);
+    else value = `https://${value.slice('intent://'.length).split('#Intent')[0]}`;
+  }
+  if (/^google\.navigation:/i.test(value)) {
+    const query = value.match(/[?&]q=([^&]+)/i)?.[1] || '';
+    value = `https://www.google.com/maps/search/?api=1&query=${query}`;
+  }
+  if (/^geo:/i.test(value)) {
+    const location = value.slice(4).split('?')[0];
+    const query = value.match(/[?&]q=([^&]+)/i)?.[1] || encodeURIComponent(location);
+    value = `https://www.google.com/maps/search/?api=1&query=${query}`;
+  }
+  value = value.replace(/[),.;]+$/, '');
+  if (/^(?:www\.)?(?:maps\.)?google\.[a-z.]+\//i.test(value) || /^(?:maps\.app\.goo\.gl|goo\.gl)\//i.test(value)) value = `https://${value}`;
+  if (/^http:\/\//i.test(value)) value = `https://${value.slice('http://'.length)}`;
+  let parsed;
+  try { parsed = new URL(value); }
+  catch (_) {
+    const error = new Error('อ่านลิงก์ไม่ได้ กรุณากด “แชร์” ใน Google Maps แล้วคัดลอกลิงก์มาวางใหม่');
+    error.status = 400;
+    throw error;
+  }
+  if (!isAllowedGoogleMapsHost(parsed.hostname)) {
+    const error = new Error('ลิงก์นี้ไม่ใช่ Google Maps กรุณาใช้ลิงก์จาก maps.app.goo.gl หรือ google.com/maps');
+    error.status = 400;
+    throw error;
+  }
+  parsed.protocol = 'https:';
+  return parsed;
+}
+
 async function expandGoogleMapsUrl(rawUrl) {
-  let current = new URL(rawUrl);
+  let current = normalizeGoogleMapsInput(rawUrl);
+  const shortLink = current.hostname === 'maps.app.goo.gl' || current.hostname === 'goo.gl';
+  if (!shortLink) return current;
   for (let hop = 0; hop < 6; hop += 1) {
-    if (!isAllowedGoogleMapsHost(current.hostname) || current.protocol !== 'https:') {
-      const error = new Error('รองรับเฉพาะลิงก์ HTTPS จาก Google Maps เท่านั้น');
-      error.status = 400;
-      throw error;
-    }
+    if (!isAllowedGoogleMapsHost(current.hostname)) return normalizeGoogleMapsInput(current.toString());
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 10000);
     try {
       const response = await fetch(current, { redirect: 'manual', signal: controller.signal, headers: { 'User-Agent': config.maps.userAgent } });
       const location = response.headers.get('location');
       if (response.status >= 300 && response.status < 400 && location) {
-        current = new URL(location, current);
+        const resolved = new URL(location, current).toString();
+        current = normalizeGoogleMapsInput(resolved);
+        if (current.hostname.startsWith('consent.google.')) {
+          const continueUrl = current.searchParams.get('continue');
+          if (continueUrl) current = normalizeGoogleMapsInput(continueUrl);
+        }
         continue;
       }
       return current;
@@ -1684,7 +1724,7 @@ async function geocodeImportedPlace(value, label) {
 }
 
 router.post('/maps/import-google-link', requireAuth, asyncHandler(async (req, res) => {
-  const rawUrl = cleanString(req.body?.url, '').slice(0, 3000);
+  const rawUrl = cleanString(req.body?.url, '').slice(0, 5000);
   if (!rawUrl) return jsonResponse(res, { success: false, message: 'กรุณาวางลิงก์ Google Maps' }, 400);
   let expanded;
   try { expanded = await expandGoogleMapsUrl(rawUrl); }
@@ -2543,5 +2583,5 @@ app.use((err, _req, res, _next) => {
 });
 
 httpServer.listen(config.port, () => {
-  console.log(`Heng Charoen Phuetphon Fuel Management API v73-mobile-viewport running on port ${config.port}`);
+  console.log(`Heng Charoen Phuetphon Fuel Management API v75-map-rendering running on port ${config.port}`);
 });

@@ -6753,3 +6753,73 @@ button, input, select, textarea { max-width: 100%; font: inherit; }
   .app-form-card .field-grid,
   .app-form-card .supplemental-grid { padding: .58rem !important; }
 }
+
+/* V75 — Leaflet tile/route visibility and stable search geometry */
+.route-planner-card.is-compact .route-planner-body { align-items: start !important; }
+.route-planner-card.is-compact .route-pickers { align-content: start; }
+.route-point-picker { isolation: isolate; }
+.route-point-picker:focus-within { z-index: 45; }
+.route-search-results {
+  position: absolute !important;
+  z-index: 900 !important;
+  top: 6.25rem !important;
+  margin: 0 !important;
+  contain: content;
+}
+.route-map-panel {
+  align-self: start !important;
+  height: clamp(470px, 54vh, 620px) !important;
+  min-height: 470px !important;
+  max-height: 620px !important;
+  background: #dfeaf5 !important;
+}
+.route-map-panel .route-live-map,
+.route-map-panel .leaflet-container {
+  display: block !important;
+  width: 100% !important;
+  height: 100% !important;
+  min-height: 0 !important;
+  max-height: none !important;
+  background: #dfeaf5 !important;
+}
+.route-map-panel .leaflet-pane,
+.route-map-panel .leaflet-map-pane,
+.route-map-panel .leaflet-tile-pane,
+.route-map-panel .leaflet-overlay-pane,
+.route-map-panel .leaflet-route-pane { display: block !important; }
+.route-map-panel .leaflet-tile {
+  width: 256px !important;
+  height: 256px !important;
+  max-width: none !important;
+  max-height: none !important;
+  opacity: 1;
+}
+.route-map-panel .leaflet-overlay-pane svg,
+.route-map-panel .leaflet-route-pane svg {
+  display: block !important;
+  max-width: none !important;
+  max-height: none !important;
+  overflow: visible !important;
+}
+.route-map-panel .leaflet-route-pane { z-index: 520 !important; }
+.route-map-panel .leaflet-marker-pane { z-index: 600 !important; }
+.route-map-panel .leaflet-tooltip-pane { z-index: 650 !important; }
+.route-map-panel .leaflet-popup-pane { z-index: 700 !important; }
+.route-map-panel .leaflet-control { z-index: 800; }
+
+@media (max-width: 920px) {
+  .route-map-panel {
+    height: clamp(280px, 58vw, 360px) !important;
+    min-height: 280px !important;
+    max-height: 360px !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .route-search-results { top: 5.95rem !important; }
+  .route-map-panel {
+    height: clamp(250px, 68vw, 310px) !important;
+    min-height: 250px !important;
+    max-height: 310px !important;
+  }
+}

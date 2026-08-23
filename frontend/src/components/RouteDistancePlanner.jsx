@@ -54,15 +54,22 @@ function RouteMap({ origin, destination, route, onMapPick, activeTarget }) {
   useEffect(() => {
     if (!mapNode.current || !window.L || mapInstance.current) return undefined;
     const L = window.L;
-    const map = L.map(mapNode.current, { zoomControl: true, attributionControl: true }).setView([13.2, 101.2], 6);
-    const satellite = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { maxZoom: 19, attribution: 'Imagery © Esri' });
-    const labels = L.tileLayer('https://services.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}', { maxZoom: 19, attribution: 'Labels © Esri', pane: 'overlayPane' });
-    const streets = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '© OpenStreetMap contributors' });
-    satellite.addTo(map); labels.addTo(map);
-    L.control.layers({ 'ดาวเทียม': satellite, 'แผนที่ถนน': streets }, { 'ชื่อสถานที่': labels }, { position: 'topright' }).addTo(map);
+    const map = L.map(mapNode.current, { zoomControl: true, attributionControl: true, preferCanvas: false }).setView([13.2, 101.2], 6);
+    map.createPane('labelsPane'); map.getPane('labelsPane').style.zIndex = '350'; map.getPane('labelsPane').style.pointerEvents = 'none';
+    map.createPane('routePane'); map.getPane('routePane').style.zIndex = '520'; map.getPane('routePane').style.pointerEvents = 'none';
+    const streets = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, crossOrigin: true, updateWhenIdle: false, keepBuffer: 3, attribution: '© OpenStreetMap contributors' });
+    const voyager = L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', { subdomains: 'abcd', maxZoom: 20, crossOrigin: true, attribution: '© OpenStreetMap © CARTO' });
+    const satellite = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { maxZoom: 19, crossOrigin: true, attribution: 'Imagery © Esri' });
+    const labels = L.tileLayer('https://services.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}', { maxZoom: 19, crossOrigin: true, attribution: 'Labels © Esri', pane: 'labelsPane' });
+    streets.addTo(map);
+    let streetErrors = 0;
+    streets.on('tileerror', () => { streetErrors += 1; if (streetErrors === 3 && !map.hasLayer(voyager)) { map.removeLayer(streets); voyager.addTo(map); } });
+    L.control.layers({ 'แผนที่ถนน': streets, 'แผนที่สีสว่าง': voyager, 'ดาวเทียม': satellite }, { 'ชื่อสถานที่บนดาวเทียม': labels }, { position: 'topright' }).addTo(map);
     mapInstance.current = map;
-    setTimeout(() => map.invalidateSize(), 50);
-    return () => { map.remove(); mapInstance.current = null; };
+    const resizeObserver = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(() => map.invalidateSize({ pan: false })) : null;
+    resizeObserver?.observe(mapNode.current);
+    const timers = [50, 250, 700].map((delay) => setTimeout(() => map.invalidateSize({ pan: false }), delay));
+    return () => { resizeObserver?.disconnect(); timers.forEach(clearTimeout); map.remove(); mapInstance.current = null; };
   }, []);
   useEffect(() => {
     const map = mapInstance.current;
@@ -84,13 +91,13 @@ function RouteMap({ origin, destination, route, onMapPick, activeTarget }) {
     if (destination) L.marker([destination.lat, destination.lon], { icon: pin('destination', 'B'), title: 'ปลายทาง' }).bindTooltip('ปลายทาง', { direction: 'top' }).addTo(group);
     const line = (route?.geometry || []).map(([lon, lat]) => [lat, lon]);
     if (line.length > 1) {
-      L.polyline(line, { color: '#0b1027', weight: 10, opacity: .8, lineJoin: 'round', lineCap: 'round' }).addTo(group);
-      L.polyline(line, { color: '#3228ff', weight: 6, opacity: 1, lineJoin: 'round', lineCap: 'round' }).addTo(group);
+      L.polyline(line, { pane: 'routePane', color: '#ffffff', weight: 12, opacity: .96, lineJoin: 'round', lineCap: 'round', interactive: false }).addTo(group);
+      L.polyline(line, { pane: 'routePane', color: '#175fe6', weight: 7, opacity: 1, lineJoin: 'round', lineCap: 'round', interactive: false }).addTo(group);
       const middle = line[Math.floor(line.length / 2)];
       L.popup({ closeButton: false, autoClose: false, closeOnClick: false, className: 'route-summary-popup', offset: [0, -4] }).setLatLng(middle).setContent(`<div><b>🚚 ${number(route.distance_km, 2)} กม.</b><span>ประมาณ ${route.duration_minutes} นาที</span></div>`).openOn(map);
     }
     if (group.getLayers().length) map.fitBounds(group.getBounds(), { padding: [42, 42], maxZoom: 16 });
-    setTimeout(() => map.invalidateSize(), 40);
+    [40, 220].forEach((delay) => setTimeout(() => map.invalidateSize({ pan: false }), delay));
   }, [origin, destination, route]);
   if (!window.L) return <div className="route-map-unavailable"><Navigation size={34} /><strong>กำลังโหลดแผนที่ดาวเทียม…</strong><span>หากไม่แสดง กรุณาตรวจสอบอินเทอร์เน็ต</span></div>;
   return <div ref={mapNode} className={`route-live-map is-picking-${activeTarget}`} aria-label={`แผนที่ดาวเทียม กำลังเลือก${activeTarget === 'origin' ? 'ต้นทาง' : 'ปลายทาง'}`} />;
@@ -161,8 +168,8 @@ export default function RouteDistancePlanner({ onDistance, onRoute, compact = fa
     <div className="route-planner-head"><div><span><Navigation size={21} /></span><div><h2>GPS ตรวจสอบระยะทาง</h2><p>ค้นหา ปักหมุด ตั้งชื่อเอง และคำนวณระยะตามถนน</p></div></div><b>ROUTE VERIFIED</b></div>
     {status && <div className={`route-provider-status ${status.google_enabled ? 'is-google' : 'is-fallback'}`}><ShieldCheck size={16} /><span><b>{status.search_provider}</b> · คำนวณด้วย {status.route_provider}</span></div>}
     <div className="route-google-import">
-      <div className="route-google-import-head"><span><Link2 size={17} /></span><div><strong>นำเข้าจาก Google Maps</strong><small>วางลิงก์สถานที่หรือเส้นทางที่กดแชร์จาก Google Maps</small></div></div>
-      <div className="route-google-import-row"><input className="input" type="url" inputMode="url" value={googleLink} onChange={(event) => setGoogleLink(event.target.value)} onKeyDown={(event) => event.key === 'Enter' && (event.preventDefault(), importGoogleLink())} placeholder="https://maps.app.goo.gl/..." /><button type="button" onClick={importGoogleLink} disabled={importingLink}>{importingLink ? <LoaderCircle className="spin" size={17} /> : <Link2 size={17} />} {importingLink ? 'กำลังอ่านลิงก์…' : 'นำเข้าเส้นทาง'}</button></div>
+      <div className="route-google-import-head"><span><Link2 size={17} /></span><div><strong>นำเข้าจาก Google Maps</strong><small>วางได้ทั้งลิงก์ ข้อความแชร์ ลิงก์สั้น หรือ Intent จากมือถือ ระบบจัดรูปแบบให้อัตโนมัติ</small></div></div>
+      <div className="route-google-import-row"><input className="input" type="text" inputMode="url" autoCapitalize="none" autoCorrect="off" value={googleLink} onChange={(event) => setGoogleLink(event.target.value)} onKeyDown={(event) => event.key === 'Enter' && (event.preventDefault(), importGoogleLink())} placeholder="วางข้อความหรือลิงก์จาก Google Maps ที่นี่" /><button type="button" onClick={importGoogleLink} disabled={importingLink}>{importingLink ? <LoaderCircle className="spin" size={17} /> : <Link2 size={17} />} {importingLink ? 'กำลังอ่านลิงก์…' : 'นำเข้าเส้นทาง'}</button></div>
       {importMessage && <p><ShieldCheck size={14} /> {importMessage}</p>}
     </div>
     <div className="route-pin-mode" role="group" aria-label="เลือกชนิดหมุดที่จะปักบนแผนที่">
