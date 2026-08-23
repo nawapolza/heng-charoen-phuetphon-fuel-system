@@ -127,6 +127,7 @@ export const api = {
   vehicleOptions: () => apiRequest('/vehicles/options'),
   searchPlaces: (text) => apiRequest(`/maps/search${query({ q: text })}`),
   mapStatus: () => apiRequest('/maps/status'),
+  importGoogleMapsLink: (url) => apiRequest('/maps/import-google-link', { method: 'POST', body: { url } }),
   reversePlace: (lat, lon) => apiRequest(`/maps/reverse${query({ lat, lon })}`),
   calculateRoute: (originLat, originLon, destinationLat, destinationLon) => apiRequest(`/maps/route${query({ origin_lat: originLat, origin_lon: originLon, destination_lat: destinationLat, destination_lon: destinationLon })}`),
   createVehicle: (body) => apiRequest('/vehicles', { method: 'POST', body }),

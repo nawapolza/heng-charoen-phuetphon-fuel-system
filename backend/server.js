@@ -1630,6 +1630,90 @@ function decodeGooglePolyline(encoded = '') {
   return points;
 }
 
+function isAllowedGoogleMapsHost(hostname = '') {
+  const host = String(hostname).toLowerCase();
+  return host === 'maps.app.goo.gl' || host === 'goo.gl' || host === 'google.com' || /(^|\.)google\.[a-z.]+$/.test(host);
+}
+
+async function expandGoogleMapsUrl(rawUrl) {
+  let current = new URL(rawUrl);
+  for (let hop = 0; hop < 6; hop += 1) {
+    if (!isAllowedGoogleMapsHost(current.hostname) || current.protocol !== 'https:') {
+      const error = new Error('รองรับเฉพาะลิงก์ HTTPS จาก Google Maps เท่านั้น');
+      error.status = 400;
+      throw error;
+    }
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 10000);
+    try {
+      const response = await fetch(current, { redirect: 'manual', signal: controller.signal, headers: { 'User-Agent': config.maps.userAgent } });
+      const location = response.headers.get('location');
+      if (response.status >= 300 && response.status < 400 && location) {
+        current = new URL(location, current);
+        continue;
+      }
+      return current;
+    } finally { clearTimeout(timeout); }
+  }
+  throw new Error('ลิงก์ Google Maps เปลี่ยนเส้นทางมากเกินไป กรุณาคัดลอกลิงก์ใหม่');
+}
+
+function coordinatesFromText(value = '') {
+  const match = String(value).match(/(-?\d{1,2}(?:\.\d+)?)\s*[, ]\s*(-?\d{1,3}(?:\.\d+)?)/);
+  if (!match) return null;
+  const lat = Number(match[1]); const lon = Number(match[2]);
+  if (!Number.isFinite(lat) || !Number.isFinite(lon) || lat < -90 || lat > 90 || lon < -180 || lon > 180) return null;
+  return { lat, lon };
+}
+
+async function geocodeImportedPlace(value, label) {
+  const decoded = decodeURIComponent(String(value || '').replace(/\+/g, ' ')).trim();
+  const coordinates = coordinatesFromText(decoded);
+  if (coordinates) return { id: `google-link-${coordinates.lat}-${coordinates.lon}`, name: label || decoded, ...coordinates, provider: 'Google Maps link' };
+  if (!decoded) return null;
+  if (config.maps.googleApiKey) {
+    try {
+      const payload = await googleMapsJson(`https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(decoded)}&language=th&key=${encodeURIComponent(config.maps.googleApiKey)}`);
+      const row = payload.results?.[0];
+      if (row) return { id: row.place_id, name: row.formatted_address || decoded, lat: Number(row.geometry?.location?.lat), lon: Number(row.geometry?.location?.lng), provider: 'Google Geocoding' };
+    } catch (error) { console.warn('Google link geocoding fallback:', error.message); }
+  }
+  const rows = await mapFetchJson(`${config.maps.geocodingUrl}/search?format=jsonv2&limit=1&addressdetails=1&accept-language=th,en&q=${encodeURIComponent(decoded)}`);
+  const row = Array.isArray(rows) ? rows[0] : null;
+  return row ? { id: `osm-${row.place_id}`, name: row.display_name || decoded, lat: Number(row.lat), lon: Number(row.lon), provider: 'OpenStreetMap' } : null;
+}
+
+router.post('/maps/import-google-link', requireAuth, asyncHandler(async (req, res) => {
+  const rawUrl = cleanString(req.body?.url, '').slice(0, 3000);
+  if (!rawUrl) return jsonResponse(res, { success: false, message: 'กรุณาวางลิงก์ Google Maps' }, 400);
+  let expanded;
+  try { expanded = await expandGoogleMapsUrl(rawUrl); }
+  catch (error) { error.status = error.status || 400; throw error; }
+  const href = expanded.toString();
+  const params = expanded.searchParams;
+  let originText = params.get('origin') || '';
+  let destinationText = params.get('destination') || '';
+  const pathParts = expanded.pathname.split('/').filter(Boolean).map((part) => decodeURIComponent(part));
+  const dirIndex = pathParts.indexOf('dir');
+  if (dirIndex >= 0) {
+    originText ||= pathParts[dirIndex + 1] || '';
+    destinationText ||= pathParts[dirIndex + 2] || '';
+  }
+  const dataCoordinate = href.match(/!3d(-?\d+(?:\.\d+)?)!4d(-?\d+(?:\.\d+)?)/);
+  const atCoordinate = href.match(/@(-?\d+(?:\.\d+)?),(-?\d+(?:\.\d+)?)/);
+  const singleText = params.get('query') || params.get('q') || params.get('ll') || '';
+  const singleCoordinates = dataCoordinate ? `${dataCoordinate[1]},${dataCoordinate[2]}` : atCoordinate ? `${atCoordinate[1]},${atCoordinate[2]}` : singleText;
+  const [origin, destination] = await Promise.all([
+    originText ? geocodeImportedPlace(originText, 'ต้นทางจาก Google Maps') : null,
+    destinationText ? geocodeImportedPlace(destinationText, 'ปลายทางจาก Google Maps') : null,
+  ]);
+  const placeIndex = pathParts.indexOf('place');
+  const pointLabel = placeIndex >= 0 ? pathParts[placeIndex + 1] : 'หมุดจาก Google Maps';
+  const point = (!origin && !destination && singleCoordinates) ? await geocodeImportedPlace(singleCoordinates, pointLabel || 'หมุดจาก Google Maps') : null;
+  if (!origin && !destination && !point) return jsonResponse(res, { success: false, message: 'อ่านพิกัดจากลิงก์นี้ไม่ได้ กรุณาใช้ปุ่มแชร์ใน Google Maps หรือวางลิงก์เส้นทาง' }, 422);
+  jsonResponse(res, { success: true, data: { origin, destination, point, expanded_url: href, provider: 'Google Maps import' } });
+}));
+
 router.get('/maps/search', requireAuth, asyncHandler(async (req, res) => {
   const q = String(req.query.q || '').trim().slice(0, 180);
   if (q.length < 2) return jsonResponse(res, { success: false, message: 'กรุณากรอกชื่อสถานที่อย่างน้อย 2 ตัวอักษร' }, 400);
@@ -2459,5 +2543,5 @@ app.use((err, _req, res, _next) => {
 });
 
 httpServer.listen(config.port, () => {
-  console.log(`Heng Charoen Phuetphon Fuel Management API v70-interactive-pins running on port ${config.port}`);
+  console.log(`Heng Charoen Phuetphon Fuel Management API v72-gps-containment running on port ${config.port}`);
 });

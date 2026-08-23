@@ -876,7 +876,7 @@ export default function DeliveryForm({ initialData = null, onSaved = null }) {
             </Section>
 
             <Section no="2" id="delivery-step-2" icon={Droplets} title="ระยะทาง ลิตรเติมจริง และราคา" subtitle="ระบบคำนวณลิตรมาตรฐานจากระยะทาง แล้วเปรียบเทียบกับลิตรเติมจริงเพื่อวิเคราะห์ค่าใช้จ่าย">
-              <div className="field-wide delivery-gps-compact">
+              <div className="field-wide col-span-full delivery-gps-compact route-section-full">
                 <RouteDistancePlanner compact onRoute={applyGpsRoute} />
                 {form.gps_route_provider && <div className="delivery-gps-proof"><ShieldCheck size={17} /><div><strong>ระยะทางยืนยันด้วย GPS · {number(effectiveDistance, 2)} กม.</strong><span>{form.gps_route_provider} · {form.gps_calculated_at ? new Date(form.gps_calculated_at).toLocaleString('th-TH') : 'บันทึกในรายการนี้'}</span></div></div>}
               </div>

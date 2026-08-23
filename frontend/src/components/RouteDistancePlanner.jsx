@@ -1,4 +1,4 @@
-import { Crosshair, ExternalLink, LoaderCircle, MapPin, Navigation, PencilLine, Route, Search, ShieldCheck } from 'lucide-react';
+import { Crosshair, ExternalLink, Link2, LoaderCircle, MapPin, Navigation, PencilLine, Route, Search, ShieldCheck } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { api } from '../api.js';
 import { alertError } from '../utils/alerts.js';
@@ -103,9 +103,29 @@ export default function RouteDistancePlanner({ onDistance, onRoute, compact = fa
   const [busy, setBusy] = useState(false);
   const [status, setStatus] = useState(null);
   const [activeTarget, setActiveTarget] = useState('origin');
+  const [googleLink, setGoogleLink] = useState('');
+  const [importingLink, setImportingLink] = useState(false);
+  const [importMessage, setImportMessage] = useState('');
   const calculatedKeyRef = useRef('');
   const requestKeyRef = useRef('');
   useEffect(() => { api.mapStatus().then((result) => setStatus(result.data)).catch(() => {}); }, []);
+  async function importGoogleLink() {
+    if (!googleLink.trim()) return alertError(new Error('กรุณาวางลิงก์ที่คัดลอกจาก Google Maps'), 'ยังไม่มีลิงก์');
+    setImportingLink(true); setImportMessage('');
+    try {
+      const result = await api.importGoogleMapsLink(googleLink.trim());
+      const imported = result.data || {};
+      if (imported.origin) setOrigin(imported.origin);
+      if (imported.destination) setDestination(imported.destination);
+      if (imported.point) {
+        if (activeTarget === 'origin') { setOrigin(imported.point); setActiveTarget('destination'); }
+        else setDestination(imported.point);
+      }
+      setRoute(null);
+      setImportMessage(imported.origin && imported.destination ? 'นำเข้าต้นทางและปลายทางจาก Google Maps แล้ว' : `นำเข้าหมุดเป็น${activeTarget === 'origin' ? 'ต้นทาง' : 'ปลายทาง'}แล้ว`);
+    } catch (error) { alertError(error, 'นำเข้าลิงก์ Google Maps ไม่สำเร็จ'); }
+    finally { setImportingLink(false); }
+  }
   async function pickFromMap(lat, lon) {
     try {
       const result = await api.reversePlace(lat, lon);
@@ -140,6 +160,11 @@ export default function RouteDistancePlanner({ onDistance, onRoute, compact = fa
   return <section className={`route-planner-card ${compact ? 'is-compact' : ''}`}>
     <div className="route-planner-head"><div><span><Navigation size={21} /></span><div><h2>GPS ตรวจสอบระยะทาง</h2><p>ค้นหา ปักหมุด ตั้งชื่อเอง และคำนวณระยะตามถนน</p></div></div><b>ROUTE VERIFIED</b></div>
     {status && <div className={`route-provider-status ${status.google_enabled ? 'is-google' : 'is-fallback'}`}><ShieldCheck size={16} /><span><b>{status.search_provider}</b> · คำนวณด้วย {status.route_provider}</span></div>}
+    <div className="route-google-import">
+      <div className="route-google-import-head"><span><Link2 size={17} /></span><div><strong>นำเข้าจาก Google Maps</strong><small>วางลิงก์สถานที่หรือเส้นทางที่กดแชร์จาก Google Maps</small></div></div>
+      <div className="route-google-import-row"><input className="input" type="url" inputMode="url" value={googleLink} onChange={(event) => setGoogleLink(event.target.value)} onKeyDown={(event) => event.key === 'Enter' && (event.preventDefault(), importGoogleLink())} placeholder="https://maps.app.goo.gl/..." /><button type="button" onClick={importGoogleLink} disabled={importingLink}>{importingLink ? <LoaderCircle className="spin" size={17} /> : <Link2 size={17} />} {importingLink ? 'กำลังอ่านลิงก์…' : 'นำเข้าเส้นทาง'}</button></div>
+      {importMessage && <p><ShieldCheck size={14} /> {importMessage}</p>}
+    </div>
     <div className="route-pin-mode" role="group" aria-label="เลือกชนิดหมุดที่จะปักบนแผนที่">
       <button type="button" className={activeTarget === 'origin' ? 'is-active is-origin' : ''} onClick={() => setActiveTarget('origin')}><i>A</i><span><small>กำลังเลือก</small><strong>ต้นทาง</strong></span></button>
       <button type="button" className={activeTarget === 'destination' ? 'is-active is-destination' : ''} onClick={() => setActiveTarget('destination')}><i>B</i><span><small>กำลังเลือก</small><strong>ปลายทาง</strong></span></button>

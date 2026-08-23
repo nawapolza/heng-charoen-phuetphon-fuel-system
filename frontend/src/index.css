@@ -122,6 +122,49 @@ summary::-webkit-details-marker { display: none; }
   .mobile-form-card > div { padding-left: .85rem; padding-right: .85rem; }
 }
 
+/* V71 — Google Maps route/link import */
+.route-google-import {
+  display: grid;
+  gap: .55rem;
+  margin: -.25rem 0 .8rem;
+  border: 1px solid rgba(96,165,250,.3);
+  border-radius: 1rem;
+  background: linear-gradient(135deg, rgba(255,255,255,.11), rgba(14,165,233,.08));
+  padding: .75rem;
+}
+.route-google-import-head { display: flex; min-width: 0; align-items: center; gap: .55rem; }
+.route-google-import-head > span { display: grid; width: 2rem; height: 2rem; flex: none; place-items: center; border-radius: .62rem; background: #fff; color: #1769cf; }
+.route-google-import-head > div { display: grid; min-width: 0; }
+.route-google-import-head strong { color: #fff; font-size: .76rem; font-weight: 950; }
+.route-google-import-head small { color: #aacbea; font-size: .62rem; font-weight: 750; line-height: 1.4; }
+.route-google-import-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: .5rem; }
+.route-google-import-row .input { min-width: 0; border: 1px solid rgba(255,255,255,.15) !important; background: rgba(255,255,255,.98) !important; color: #173552 !important; }
+.route-google-import-row > button {
+  display: inline-flex;
+  min-height: 2.7rem;
+  align-items: center;
+  justify-content: center;
+  gap: .38rem;
+  border: 0;
+  border-radius: .78rem;
+  background: linear-gradient(135deg, #2180ed, #135bbd);
+  padding: .55rem .8rem;
+  color: #fff;
+  font-size: .68rem;
+  font-weight: 950;
+  white-space: nowrap;
+  cursor: pointer;
+  box-shadow: 0 7px 18px rgba(19,91,189,.28);
+}
+.route-google-import-row > button:disabled { opacity: .65; cursor: wait; }
+.route-google-import > p { display: flex; align-items: center; gap: .35rem; margin: 0; color: #a7f3d0; font-size: .64rem; font-weight: 850; }
+
+@media (max-width: 560px) {
+  .route-google-import { padding: .65rem; }
+  .route-google-import-row { grid-template-columns: minmax(0, 1fr); }
+  .route-google-import-row > button { width: 100%; }
+}
+
 @media (max-width: 360px) {
   .summary-grid { grid-template-columns: 1fr !important; }
   .receipt-card h3 { font-size: 1.55rem; }
@@ -6485,4 +6528,112 @@ button, input, select, textarea { max-width: 100%; font: inherit; }
   .dashboard-metrics { grid-template-columns: minmax(0, 1fr) !important; }
   .form-hero-summary { grid-template-columns: minmax(0, 1fr) !important; }
   .app-form-body, .section-card { padding-inline: .55rem !important; }
+}
+
+/* V72 — definitive GPS containment fix (must remain at end of stylesheet) */
+.app-form-card,
+.app-form-body,
+.form-content-stack,
+.form-section-card,
+.section-fields { width: 100%; max-width: 100%; min-width: 0; }
+.form-section-card { overflow: hidden !important; }
+.section-fields > .route-section-full,
+.section-fields > .delivery-gps-compact {
+  grid-column: 1 / -1 !important;
+  justify-self: stretch !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+  margin-inline: 0 !important;
+  overflow: hidden !important;
+}
+.delivery-gps-compact > .route-planner-card.is-compact {
+  container-type: inline-size;
+  container-name: gps-planner;
+  width: 100% !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+  margin-inline: 0 !important;
+  overflow: hidden !important;
+  padding: clamp(.75rem, 1.4vw, 1rem) !important;
+}
+.route-planner-card.is-compact .route-planner-head,
+.route-planner-card.is-compact .route-provider-status,
+.route-planner-card.is-compact .route-google-import,
+.route-planner-card.is-compact .route-pin-mode,
+.route-planner-card.is-compact .route-planner-body,
+.route-planner-card.is-compact .route-pickers,
+.route-planner-card.is-compact .route-point-picker,
+.route-planner-card.is-compact .route-search-row,
+.route-planner-card.is-compact .route-map-panel,
+.route-planner-card.is-compact .route-live-map { width: 100% !important; max-width: 100% !important; min-width: 0 !important; }
+.route-planner-card.is-compact .route-planner-body {
+  grid-template-columns: minmax(280px, .9fr) minmax(0, 1.1fr) !important;
+  overflow: hidden;
+}
+.route-planner-card.is-compact .route-pickers { overflow: visible; }
+.route-planner-card.is-compact .route-search-row {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) 2.7rem 2.7rem !important;
+  gap: .45rem !important;
+  align-items: center;
+}
+.route-planner-card.is-compact .route-point-picker.is-destination .route-search-row {
+  grid-template-columns: minmax(0, 1fr) 2.7rem !important;
+}
+.route-planner-card.is-compact .route-search-row .input {
+  grid-column: 1 !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  max-width: 100% !important;
+}
+.route-planner-card.is-compact .route-search-row .btn-soft {
+  width: 2.7rem !important;
+  min-width: 2.7rem !important;
+  max-width: 2.7rem !important;
+  padding: 0 !important;
+}
+.route-planner-card.is-compact .route-google-import-row { grid-template-columns: minmax(0, 1fr) auto; }
+.route-planner-card.is-compact .route-map-panel,
+.route-planner-card.is-compact .route-live-map { min-height: clamp(250px, 34vw, 390px) !important; }
+.route-planner-card.is-compact .route-search-results { left: .6rem; right: .6rem; width: auto; max-width: none; }
+
+@container gps-planner (max-width: 820px) {
+  .route-planner-card.is-compact .route-planner-body { grid-template-columns: minmax(0, 1fr) !important; }
+  .route-planner-card.is-compact .route-map-panel,
+  .route-planner-card.is-compact .route-live-map { min-height: clamp(230px, 52vw, 320px) !important; }
+}
+
+@container gps-planner (max-width: 560px) {
+  .route-planner-card.is-compact .route-planner-head { align-items: flex-start; }
+  .route-planner-card.is-compact .route-planner-head > b { display: none; }
+  .route-planner-card.is-compact .route-google-import-row { grid-template-columns: minmax(0, 1fr) !important; }
+  .route-planner-card.is-compact .route-google-import-row > button { width: 100%; }
+  .route-planner-card.is-compact .route-pin-mode { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .route-planner-card.is-compact .route-pin-mode > p { grid-column: 1 / -1; }
+}
+
+@media (max-width: 920px) {
+  .form-section-card { padding-inline: .65rem !important; }
+  .section-fields { grid-template-columns: minmax(0, 1fr) !important; }
+  .section-fields > * { grid-column: 1 !important; width: 100%; max-width: 100%; min-width: 0; }
+  .section-fields > .route-section-full { grid-column: 1 !important; }
+  .delivery-gps-compact > .route-planner-card.is-compact { border-radius: 1rem !important; padding: .7rem !important; }
+  .route-planner-card.is-compact .route-planner-body { grid-template-columns: minmax(0, 1fr) !important; }
+  .route-planner-card.is-compact .route-map-panel,
+  .route-planner-card.is-compact .route-live-map { min-height: clamp(225px, 58vw, 310px) !important; }
+}
+
+@media (max-width: 480px) {
+  .app-form-body { padding-inline: .45rem !important; }
+  .form-section-card { padding-inline: .5rem !important; border-radius: .9rem !important; }
+  .route-planner-card.is-compact .route-planner-head h2 { font-size: .92rem; }
+  .route-planner-card.is-compact .route-planner-head p { font-size: .62rem; line-height: 1.45; }
+  .route-planner-card.is-compact .route-provider-status { margin-bottom: .6rem; padding: .55rem; }
+  .route-planner-card.is-compact .route-pin-mode { gap: .38rem; }
+  .route-planner-card.is-compact .route-point-picker { padding: .6rem !important; }
+  .route-planner-card.is-compact .route-search-row { grid-template-columns: minmax(0, 1fr) 2.55rem 2.55rem !important; gap: .35rem !important; }
+  .route-planner-card.is-compact .route-point-picker.is-destination .route-search-row { grid-template-columns: minmax(0, 1fr) 2.55rem !important; }
+  .route-planner-card.is-compact .route-search-row .btn-soft { width: 2.55rem !important; min-width: 2.55rem !important; max-width: 2.55rem !important; }
+  .route-map-selection { width: calc(100% - 3.8rem); }
 }
