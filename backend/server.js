@@ -1714,6 +1714,22 @@ function isDynamicCurrentLocation(value = '') {
   ].some((token) => normalized === token || normalized.includes(token));
 }
 
+function routeCoordinatesFromGoogleData(value = '') {
+  const points = [];
+  const add = (lat, lon) => {
+    const point = { lat: Number(lat), lon: Number(lon) };
+    if (!Number.isFinite(point.lat) || !Number.isFinite(point.lon) || point.lat < -90 || point.lat > 90 || point.lon < -180 || point.lon > 180) return;
+    if (!points.some((row) => Math.abs(row.lat - point.lat) < 0.000001 && Math.abs(row.lon - point.lon) < 0.000001)) points.push(point);
+  };
+  for (const match of String(value).matchAll(/!1d(-?\d+(?:\.\d+)?)!2d(-?\d+(?:\.\d+)?)/g)) add(match[2], match[1]);
+  return points;
+}
+
+function importedEndpointLabel(value, fallback) {
+  const decoded = decodeURIComponent(String(value || '').replace(/\+/g, ' ')).trim();
+  return !decoded || isDynamicCurrentLocation(decoded) || coordinatesFromText(decoded) ? fallback : decoded;
+}
+
 async function geocodeImportedPlace(value, label) {
   const decoded = decodeURIComponent(String(value || '').replace(/\+/g, ' ')).trim();
   const coordinates = coordinatesFromText(decoded);
@@ -1768,16 +1784,29 @@ router.post('/maps/import-google-link', requireAuth, asyncHandler(async (req, re
     originText ||= pathParts[dirIndex + 1] || '';
     destinationText ||= pathParts[dirIndex + 2] || '';
   }
-  const requiresCurrentOrigin = dirIndex >= 0 && isDynamicCurrentLocation(originText);
+  let requiresCurrentOrigin = dirIndex >= 0 && isDynamicCurrentLocation(originText);
   if (requiresCurrentOrigin) originText = '';
   const dataCoordinate = href.match(/!3d(-?\d+(?:\.\d+)?)!4d(-?\d+(?:\.\d+)?)/);
   const atCoordinate = href.match(/@(-?\d+(?:\.\d+)?),(-?\d+(?:\.\d+)?)/);
   const singleText = params.get('query') || params.get('q') || params.get('ll') || '';
   const singleCoordinates = dataCoordinate ? `${dataCoordinate[1]},${dataCoordinate[2]}` : atCoordinate ? `${atCoordinate[1]},${atCoordinate[2]}` : singleText;
-  const [origin, destination] = await Promise.all([
+  let [origin, destination] = await Promise.all([
     originText ? geocodeImportedPlace(originText, 'ต้นทางจาก Google Maps') : null,
     destinationText ? geocodeImportedPlace(destinationText, 'ปลายทางจาก Google Maps') : null,
   ]);
+  const embeddedEndpoints = routeCoordinatesFromGoogleData(href);
+  if (embeddedEndpoints.length >= 2) {
+    const first = embeddedEndpoints[0];
+    const last = embeddedEndpoints[embeddedEndpoints.length - 1];
+    [origin, destination] = await Promise.all([
+      geocodeImportedPlace(`${first.lat},${first.lon}`, importedEndpointLabel(originText, 'ต้นทางจาก Google Maps')),
+      geocodeImportedPlace(`${last.lat},${last.lon}`, importedEndpointLabel(destinationText, 'ปลายทางจาก Google Maps')),
+    ]);
+    requiresCurrentOrigin = false;
+  } else if (embeddedEndpoints.length === 1 && destinationText && !originText) {
+    const only = embeddedEndpoints[0];
+    destination = await geocodeImportedPlace(`${only.lat},${only.lon}`, importedEndpointLabel(destinationText, 'ปลายทางจาก Google Maps'));
+  }
   const placeIndex = pathParts.indexOf('place');
   const pointLabel = placeIndex >= 0 ? pathParts[placeIndex + 1] : 'หมุดจาก Google Maps';
   const point = (!origin && !destination && singleCoordinates) ? await geocodeImportedPlace(singleCoordinates, pointLabel || 'หมุดจาก Google Maps') : null;
@@ -2619,5 +2648,5 @@ app.use((err, _req, res, _next) => {
 });
 
 httpServer.listen(config.port, () => {
-  console.log(`Heng Charoen Phuetphon Fuel Management API v77-route-link-choice running on port ${config.port}`);
+  console.log(`Heng Charoen Phuetphon Fuel Management API v78-google-route-endpoints running on port ${config.port}`);
 });
