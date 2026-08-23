@@ -1633,22 +1633,41 @@ function decodeGooglePolyline(encoded = '') {
 router.get('/maps/search', requireAuth, asyncHandler(async (req, res) => {
   const q = String(req.query.q || '').trim().slice(0, 180);
   if (q.length < 2) return jsonResponse(res, { success: false, message: 'กรุณากรอกชื่อสถานที่อย่างน้อย 2 ตัวอักษร' }, 400);
+  const simplified = q.replace(/\b(company|co\.?|ltd\.?|limited|corporation|corp\.?)\b/gi, ' ').replace(/บริษัท|จำกัด|หจก\.?|บจก\.?/g, ' ').replace(/\s+/g, ' ').trim();
+  const queries = [...new Set([q, simplified].filter((value) => value.length >= 2))];
+  const collected = [];
+  const addRows = (rows) => {
+    for (const row of rows || []) {
+      if (!Number.isFinite(row.lat) || !Number.isFinite(row.lon)) continue;
+      const duplicate = collected.some((item) => Math.abs(item.lat - row.lat) < 0.00008 && Math.abs(item.lon - row.lon) < 0.00008);
+      if (!duplicate) collected.push(row);
+    }
+  };
   if (config.maps.googleApiKey) {
-    try {
-      const payload = await googleMapsJson('https://places.googleapis.com/v1/places:searchText', {
-        method: 'POST', body: { textQuery: q, languageCode: 'th', maxResultCount: 8 },
-        fieldMask: 'places.id,places.displayName,places.formattedAddress,places.location,places.primaryType',
-      });
-      const data = (payload.places || []).map((place) => ({ id: place.id, name: `${place.displayName?.text || q}${place.formattedAddress ? ` — ${place.formattedAddress}` : ''}`, lat: Number(place.location?.latitude), lon: Number(place.location?.longitude), type: place.primaryType || '', provider: 'Google Places' })).filter((row) => Number.isFinite(row.lat) && Number.isFinite(row.lon));
-      if (data.length) return jsonResponse(res, { success: true, data, provider: 'Google Places' });
-    } catch (error) { console.warn('Google Places fallback:', error.message); }
+    for (const searchQuery of queries) {
+      try {
+        const payload = await googleMapsJson('https://places.googleapis.com/v1/places:searchText', {
+          method: 'POST', body: { textQuery: searchQuery, languageCode: 'th', maxResultCount: 10 },
+          fieldMask: 'places.id,places.displayName,places.formattedAddress,places.location,places.primaryType',
+        });
+        addRows((payload.places || []).map((place) => ({ id: place.id, name: `${place.displayName?.text || searchQuery}${place.formattedAddress ? ` — ${place.formattedAddress}` : ''}`, lat: Number(place.location?.latitude), lon: Number(place.location?.longitude), type: place.primaryType || '', provider: 'Google Places' })));
+      } catch (error) { console.warn('Google Places fallback:', error.message); }
+      if (collected.length < 5) {
+        try {
+          const payload = await googleMapsJson(`https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(searchQuery)}&language=th&key=${encodeURIComponent(config.maps.googleApiKey)}`);
+          addRows((payload.results || []).slice(0, 8).map((row) => ({ id: row.place_id, name: row.formatted_address || searchQuery, lat: Number(row.geometry?.location?.lat), lon: Number(row.geometry?.location?.lng), type: row.types?.[0] || '', provider: 'Google Geocoding' })));
+        } catch (error) { console.warn('Google Geocoding search fallback:', error.message); }
+      }
+    }
   }
-  const url = `${config.maps.geocodingUrl}/search?format=jsonv2&limit=8&addressdetails=1&q=${encodeURIComponent(q)}`;
-  const rows = await mapFetchJson(url);
-  const data = (Array.isArray(rows) ? rows : []).map((row) => ({
-    id: String(row.place_id), name: row.display_name, lat: Number(row.lat), lon: Number(row.lon), type: row.type || '', provider: 'OpenStreetMap',
-  })).filter((row) => Number.isFinite(row.lat) && Number.isFinite(row.lon));
-  jsonResponse(res, { success: true, data });
+  for (const searchQuery of queries) {
+    try {
+      const url = `${config.maps.geocodingUrl}/search?format=jsonv2&limit=10&addressdetails=1&accept-language=th,en&q=${encodeURIComponent(searchQuery)}`;
+      const rows = await mapFetchJson(url);
+      addRows((Array.isArray(rows) ? rows : []).map((row) => ({ id: `osm-${row.place_id}`, name: row.display_name, lat: Number(row.lat), lon: Number(row.lon), type: row.type || '', provider: 'OpenStreetMap' })));
+    } catch (error) { console.warn('OpenStreetMap search fallback:', error.message); }
+  }
+  jsonResponse(res, { success: true, data: collected.slice(0, 18), provider: config.maps.googleApiKey ? 'Multi-source: Google + OpenStreetMap' : 'OpenStreetMap', query_variants: queries.length });
 }));
 
 router.get('/maps/status', requireAuth, (_req, res) => jsonResponse(res, { success: true, data: { google_enabled: Boolean(config.maps.googleApiKey), search_provider: config.maps.googleApiKey ? 'Google Places' : 'OpenStreetMap ทั่วโลก', route_provider: config.maps.googleApiKey ? 'Google Routes (Traffic-aware)' : 'OSRM' } }));
@@ -1681,7 +1700,7 @@ router.get('/maps/route', requireAuth, asyncHandler(async (req, res) => {
         fieldMask: 'routes.distanceMeters,routes.duration,routes.polyline.encodedPolyline',
       });
       const googleRoute = payload.routes?.[0];
-      if (googleRoute) return jsonResponse(res, { success: true, data: { distance_km: round2(Number(googleRoute.distanceMeters || 0) / 1000), duration_minutes: Math.max(1, Math.round(Number(String(googleRoute.duration || '0s').replace('s', '')) / 60)), geometry: decodeGooglePolyline(googleRoute.polyline?.encodedPolyline || ''), calculated_at: nowIso(), provider: 'Google Routes · Traffic-aware' } });
+      if (googleRoute) return jsonResponse(res, { success: true, data: { distance_m: Math.round(Number(googleRoute.distanceMeters || 0)), distance_km: round2(Number(googleRoute.distanceMeters || 0) / 1000), duration_minutes: Math.max(1, Math.round(Number(String(googleRoute.duration || '0s').replace('s', '')) / 60)), geometry: decodeGooglePolyline(googleRoute.polyline?.encodedPolyline || ''), route_quality: 'เส้นทางรถยนต์ Google แบบ Traffic-aware', calculated_at: nowIso(), provider: 'Google Routes · Traffic-aware' } });
     } catch (error) { console.warn('Google Routes fallback:', error.message); }
   }
   const coordinates = `${originLon},${originLat};${destinationLon},${destinationLat}`;
@@ -1690,13 +1709,14 @@ router.get('/maps/route', requireAuth, asyncHandler(async (req, res) => {
   const route = payload?.routes?.[0];
   if (!route) return jsonResponse(res, { success: false, message: 'ไม่พบเส้นทางรถยนต์ระหว่างสองจุดนี้' }, 404);
   jsonResponse(res, { success: true, data: {
+    distance_m: Math.round(Number(route.distance || 0)),
     distance_km: round2(Number(route.distance || 0) / 1000),
     duration_minutes: Math.max(1, Math.round(Number(route.duration || 0) / 60)),
     geometry: Array.isArray(route.geometry?.coordinates)
       ? route.geometry.coordinates.map((point) => [Number(point[0]), Number(point[1])])
         .filter((point) => Number.isFinite(point[0]) && Number.isFinite(point[1]))
       : [],
-    calculated_at: nowIso(), provider: 'OpenStreetMap / OSRM',
+    route_quality: 'เส้นทางรถยนต์ตามเครือข่ายถนน OSRM', calculated_at: nowIso(), provider: 'OpenStreetMap / OSRM',
   } });
 }));
 
@@ -2439,5 +2459,5 @@ app.use((err, _req, res, _next) => {
 });
 
 httpServer.listen(config.port, () => {
-  console.log(`Heng Charoen Phuetphon Fuel Management API v68-mobile-polish running on port ${config.port}`);
+  console.log(`Heng Charoen Phuetphon Fuel Management API v70-interactive-pins running on port ${config.port}`);
 });

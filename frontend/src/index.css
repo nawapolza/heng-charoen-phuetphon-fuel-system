@@ -228,6 +228,112 @@ input, textarea, select {
   }
 }
 
+/* V70 — interactive A/B pin workflow */
+.route-pin-mode {
+  display: grid;
+  grid-template-columns: minmax(150px, .7fr) minmax(150px, .7fr) minmax(220px, 1.6fr);
+  gap: .55rem;
+  align-items: stretch;
+  margin: -.25rem 0 .8rem;
+}
+.route-pin-mode > button {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: .58rem;
+  border: 1px solid rgba(255,255,255,.15);
+  border-radius: .85rem;
+  background: rgba(255,255,255,.075);
+  padding: .55rem .7rem;
+  color: #dcecff;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color .18s ease, background .18s ease, transform .18s ease;
+}
+.route-pin-mode > button:hover { transform: translateY(-1px); background: rgba(255,255,255,.12); }
+.route-pin-mode > button.is-active { border-color: #7dd3fc; background: rgba(14,165,233,.2); box-shadow: inset 0 0 0 1px rgba(125,211,252,.15); }
+.route-pin-mode i,
+.route-map-selection i {
+  display: grid;
+  width: 1.85rem;
+  height: 1.85rem;
+  flex: none;
+  place-items: center;
+  border-radius: .58rem;
+  background: #2178e5;
+  color: #fff;
+  font-size: .72rem;
+  font-style: normal;
+  font-weight: 950;
+}
+.route-pin-mode .is-destination i,
+.route-map-selection .is-destination i { background: #e83b3b; }
+.route-pin-mode button > span { display: grid; min-width: 0; }
+.route-pin-mode small { color: #8fb9e6; font-size: .56rem; font-weight: 850; }
+.route-pin-mode strong { font-size: .75rem; font-weight: 950; }
+.route-pin-mode > p {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: .45rem;
+  margin: 0;
+  border: 1px dashed rgba(125,211,252,.28);
+  border-radius: .85rem;
+  background: rgba(14,165,233,.09);
+  padding: .6rem .75rem;
+  color: #c8e6ff;
+  font-size: .68rem;
+  font-weight: 750;
+}
+.route-pin-name { display: grid; gap: .3rem; margin-top: .55rem; }
+.route-pin-name > span { display: flex; align-items: center; gap: .35rem; color: #afd3f6; font-size: .62rem; font-weight: 900; }
+.route-pin-name .input { min-height: 2.55rem; border: 1px solid rgba(255,255,255,.18) !important; background: rgba(255,255,255,.96) !important; }
+.route-point-picker.is-origin { box-shadow: inset 3px 0 0 #2982ed; }
+.route-point-picker.is-destination { box-shadow: inset 3px 0 0 #ef4444; }
+.route-map-panel { isolation: isolate; }
+.route-map-selection {
+  position: absolute;
+  z-index: 500;
+  top: .65rem;
+  left: .65rem;
+  display: grid;
+  width: min(18rem, calc(100% - 4.7rem));
+  gap: .32rem;
+  pointer-events: none;
+}
+.route-map-selection > div {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: .5rem;
+  border: 1px solid rgba(209,222,238,.9);
+  border-radius: .72rem;
+  background: rgba(255,255,255,.94);
+  padding: .42rem .52rem;
+  color: #173552;
+  box-shadow: 0 7px 20px rgba(18,45,78,.15);
+  backdrop-filter: blur(12px);
+}
+.route-map-selection span { display: grid; min-width: 0; }
+.route-map-selection small { color: #71839a; font-size: .52rem; font-weight: 850; }
+.route-map-selection strong { overflow: hidden; font-size: .65rem; font-weight: 950; text-overflow: ellipsis; white-space: nowrap; }
+.route-live-map.is-picking-origin { cursor: crosshair; }
+.route-live-map.is-picking-destination { cursor: cell; }
+
+@media (max-width: 760px) {
+  .route-pin-mode { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .route-pin-mode > p { grid-column: 1 / -1; }
+  .route-map-selection { top: .5rem; left: .5rem; width: min(15rem, calc(100% - 4rem)); }
+}
+
+@media (max-width: 420px) {
+  .route-pin-mode { gap: .4rem; }
+  .route-pin-mode > button { padding: .48rem; }
+  .route-pin-mode > p { padding: .52rem .6rem; }
+  .route-map-selection { width: calc(100% - 4rem); }
+  .route-map-selection strong { font-size: .58rem; }
+}
+
 /* v27 mobile footer + login field polish */
 @layer components {
   .mobile-bottom-nav {
@@ -6160,6 +6266,8 @@ body {
 .route-search-row .input { min-width: 0; }
 .route-search-row .btn-soft { flex: 0 0 42px; }
 .route-search-results { max-width: calc(100% - 28px); }
+.route-search-results button > span { min-width: 0; overflow-wrap: anywhere; }
+.route-search-results button > span > small { display: block; margin-top: .18rem; color: #71849b; font-size: .6rem; font-weight: 850; }
 .btn-primary svg,
 .btn-soft svg,
 .nova-dock-item svg { flex: none; opacity: 1; stroke: currentColor; }
@@ -6261,4 +6369,120 @@ body {
   .nova-mobile-dock { left: .3rem !important; right: .3rem !important; padding-inline: .2rem !important; }
   .nova-dock-item small { font-size: .52rem !important; }
   .route-planner-card.is-compact .route-search-row { grid-template-columns: minmax(0, 1fr) 2.45rem 2.45rem; gap: .3rem; }
+}
+
+/* V69 — unified responsive grid and desktop/mobile edge safety */
+:root { --v69-gap: clamp(.7rem, 1.15vw, 1.05rem); --v69-page: clamp(.8rem, 2vw, 2rem); }
+html, body, #root { width: 100%; max-width: 100%; overflow-x: clip; }
+*, *::before, *::after { box-sizing: border-box; }
+img, svg, canvas, video, iframe { max-width: 100%; }
+button, input, select, textarea { max-width: 100%; font: inherit; }
+
+.nova-main {
+  width: min(100%, 1600px) !important;
+  min-width: 0;
+  margin-inline: auto;
+  padding: clamp(1rem, 1.7vw, 1.65rem) var(--v69-page) 3rem !important;
+}
+.nova-main > *,
+.page-shell > *,
+.grid > *,
+.field-grid > *,
+.smart-form-grid > *,
+.dashboard-metrics > *,
+.dashboard-grid-main > *,
+.calculator-layout > *,
+.monthly-report-main-grid > *,
+.branch-layout-grid > * { min-width: 0; }
+.page-shell { width: 100%; max-width: 100%; gap: var(--v69-gap) !important; }
+.card, .card-clean, .card-flat, .section-card, .history-console, .mobile-form-card {
+  max-width: 100%;
+  border-radius: 1rem !important;
+}
+.card, .card-clean, .card-flat, .section-card { padding-inline: clamp(.75rem, 1.35vw, 1.15rem); }
+.section-head { gap: .75rem; }
+.section-head > *, .form-hero-brand > *, .route-planner-head > * { min-width: 0; }
+.section-head h3, .section-head p, .form-hero-brand h2, .form-hero-brand p { overflow-wrap: anywhere; }
+
+/* A predictable professional form grid: 3 columns on wide displays, 2 on laptops. */
+.smart-form-grid,
+.field-grid {
+  display: grid !important;
+  grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  align-items: start;
+  gap: .78rem var(--v69-gap) !important;
+}
+.field-wide { grid-column: 1 / -1 !important; }
+.form-field, .form-field > *, .input { min-width: 0; width: 100%; }
+.input, select.input, textarea.input { border-radius: .78rem !important; }
+.form-progress-strip { grid-template-columns: repeat(5, minmax(0, 1fr)) !important; gap: .45rem !important; }
+.form-progress-item { min-width: 0; }
+.form-progress-item > span:last-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.form-hero-summary { grid-template-columns: repeat(5, minmax(0, 1fr)) !important; gap: .55rem !important; }
+.heng-form-submitbar { width: 100%; max-width: 100%; }
+
+/* Dashboard and management pages align to the same rhythm. */
+.dashboard-metrics { grid-template-columns: repeat(6, minmax(0, 1fr)) !important; gap: var(--v69-gap) !important; }
+.dashboard-grid-main { grid-template-columns: minmax(0, 1.35fr) minmax(290px, .65fr) !important; gap: var(--v69-gap) !important; }
+.dashboard-rank-grid, .dashboard-stock-grid, .dashboard-secondary-metrics,
+.stock-control-grid, .stock-settings-grid { gap: var(--v69-gap) !important; }
+.calculator-layout, .monthly-report-main-grid, .branch-layout-grid { gap: var(--v69-gap) !important; }
+.dashboard-table-wrap, .table-wrap, .history-table-wrap { max-width: 100%; overflow-x: auto; overscroll-behavior-inline: contain; }
+.dashboard-table { width: max(100%, 880px); }
+.branch-card, .stock-level-card, .metric-card { height: 100%; }
+
+/* GPS: balanced desktop columns and visible precision evidence. */
+.route-planner-card.is-compact .route-planner-body {
+  grid-template-columns: minmax(320px, .86fr) minmax(420px, 1.14fr) !important;
+  align-items: stretch;
+  gap: var(--v69-gap) !important;
+}
+.route-planner-card.is-compact .route-map-panel { min-height: 320px; }
+.route-selected > span { min-width: 0; overflow-wrap: anywhere; }
+.route-selected small { display: block; width: fit-content; margin-top: .35rem; border-radius: 999px; padding: .2rem .48rem; font-size: .62rem; font-weight: 900; }
+.route-selected small.is-precise { background: rgba(74, 222, 128, .15); color: #86efac; }
+.route-selected small.is-warning { background: rgba(251, 191, 36, .16); color: #fde68a; }
+.route-proof > div { min-width: 0; }
+.route-proof strong { overflow-wrap: anywhere; }
+
+@media (max-width: 1280px) {
+  .smart-form-grid, .field-grid { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+  .dashboard-metrics { grid-template-columns: repeat(3, minmax(0, 1fr)) !important; }
+  .route-planner-card.is-compact .route-planner-body { grid-template-columns: minmax(290px, .9fr) minmax(360px, 1.1fr) !important; }
+}
+
+@media (max-width: 1024px) {
+  .nova-main { padding-inline: clamp(.8rem, 2vw, 1.25rem) !important; }
+  .dashboard-grid-main, .calculator-layout, .monthly-report-main-grid, .branch-layout-grid { grid-template-columns: minmax(0, 1fr) !important; }
+  .route-planner-card.is-compact .route-planner-body { grid-template-columns: minmax(0, 1fr) !important; }
+  .route-planner-card.is-compact .route-map-panel { min-height: 280px; }
+}
+
+@media (max-width: 920px) {
+  .nova-main { padding: .75rem max(.65rem, env(safe-area-inset-right)) max(6.8rem, calc(env(safe-area-inset-bottom) + 6.15rem)) max(.65rem, env(safe-area-inset-left)) !important; }
+  .form-hero-summary { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+  .form-progress-strip { overflow-x: auto; grid-template-columns: repeat(5, minmax(7.2rem, 1fr)) !important; scrollbar-width: none; }
+  .form-progress-strip::-webkit-scrollbar { display: none; }
+  .dashboard-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+  .dashboard-rank-grid, .dashboard-stock-grid { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+}
+
+@media (max-width: 640px) {
+  :root { --v69-gap: .65rem; }
+  .smart-form-grid, .field-grid { grid-template-columns: minmax(0, 1fr) !important; }
+  .field-wide { grid-column: 1 !important; }
+  .app-form-body { padding-inline: .62rem !important; }
+  .section-card { padding-inline: .68rem !important; }
+  .form-hero-summary { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+  .dashboard-rank-grid, .dashboard-stock-grid, .dashboard-secondary-metrics,
+  .stock-control-grid, .stock-settings-grid, .branch-card-list { grid-template-columns: minmax(0, 1fr) !important; }
+  .route-planner-card.is-compact .route-map-panel { min-height: 230px; }
+  .route-map-panel .leaflet-control-attribution { max-width: 72%; font-size: .5rem; white-space: normal; }
+  .route-search-results { left: .6rem; right: .6rem; max-width: calc(100% - 1.2rem); }
+}
+
+@media (max-width: 380px) {
+  .dashboard-metrics { grid-template-columns: minmax(0, 1fr) !important; }
+  .form-hero-summary { grid-template-columns: minmax(0, 1fr) !important; }
+  .app-form-body, .section-card { padding-inline: .55rem !important; }
 }

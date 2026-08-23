@@ -1,4 +1,4 @@
-import { Crosshair, ExternalLink, LoaderCircle, MapPin, Navigation, Route, Search, ShieldCheck } from 'lucide-react';
+import { Crosshair, ExternalLink, LoaderCircle, MapPin, Navigation, PencilLine, Route, Search, ShieldCheck } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { api } from '../api.js';
 import { alertError } from '../utils/alerts.js';
@@ -9,7 +9,7 @@ function googleDirectionsUrl(origin, destination) {
   return `https://www.google.com/maps/dir/?api=1&origin=${origin.lat},${origin.lon}&destination=${destination.lat},${destination.lon}&travelmode=driving`;
 }
 
-function PointPicker({ title, point, onPick, allowGps = false }) {
+function PointPicker({ title, point, onPick, onRename, allowGps = false, kind = 'origin' }) {
   const [query, setQuery] = useState('');
   const [rows, setRows] = useState([]);
   const [busy, setBusy] = useState(false);
@@ -29,20 +29,25 @@ function PointPicker({ title, point, onPick, allowGps = false }) {
     if (!navigator.geolocation) return alertError(new Error('อุปกรณ์นี้ไม่รองรับ GPS'), 'ใช้ GPS ไม่ได้');
     setBusy(true);
     navigator.geolocation.getCurrentPosition(async ({ coords }) => {
-      try { const result = await api.reversePlace(coords.latitude, coords.longitude); onPick(result.data); setQuery(result.data.name); setRows([]); }
+      try {
+        const result = await api.reversePlace(coords.latitude, coords.longitude);
+        const point = { ...result.data, accuracy_m: Math.round(Number(coords.accuracy || 0)), captured_at: new Date().toISOString() };
+        onPick(point); setQuery(point.name); setRows([]);
+      }
       catch (error) { alertError(error, 'อ่านตำแหน่ง GPS ไม่สำเร็จ'); }
       finally { setBusy(false); }
-    }, (error) => { setBusy(false); alertError(error, 'กรุณาอนุญาตการเข้าถึงตำแหน่งในเบราว์เซอร์'); }, { enableHighAccuracy: true, timeout: 12000, maximumAge: 30000 });
+    }, (error) => { setBusy(false); alertError(error, 'กรุณาอนุญาตการเข้าถึงตำแหน่งในเบราว์เซอร์ และเปิดโหมดตำแหน่งความแม่นยำสูง'); }, { enableHighAccuracy: true, timeout: 20000, maximumAge: 0 });
   }
-  return <div className="route-point-picker">
+  return <div className={`route-point-picker is-${kind}`}>
     <div className="route-point-title"><span><MapPin size={17} /></span><div><strong>{title}</strong><small>{point ? `${number(point.lat, 5)}, ${number(point.lon, 5)}` : 'ค้นหาแล้วเลือกจากรายการ'}</small></div></div>
     <div className="route-search-row"><input className="input" value={query} onChange={(e) => setQuery(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), search())} placeholder="ชื่อบริษัท อำเภอ จังหวัด หรือที่อยู่" /><button type="button" className="btn-soft" onClick={search} disabled={busy}>{busy ? <LoaderCircle className="spin" size={17} /> : <Search size={17} />}</button>{allowGps && <button type="button" className="btn-soft route-gps-button" onClick={useGps} disabled={busy} title="ใช้ GPS ปัจจุบัน"><Crosshair size={17} /></button>}</div>
-    {rows.length > 0 && <div className="route-search-results">{rows.map((row) => <button type="button" key={row.id} onClick={() => { onPick(row); setQuery(row.name); setRows([]); }}><MapPin size={15} /><span>{row.name}</span></button>)}</div>}
-    {point && <div className="route-selected"><ShieldCheck size={15} /><span>{point.name}</span></div>}
+    {rows.length > 0 && <div className="route-search-results">{rows.map((row) => <button type="button" key={`${row.provider}-${row.id}`} onClick={() => { onPick(row); setQuery(row.name); setRows([]); }}><MapPin size={15} /><span>{row.name}<small>{row.provider || 'แหล่งข้อมูลแผนที่'}</small></span></button>)}</div>}
+    {point && <div className="route-selected"><ShieldCheck size={15} /><span>{point.name}{point.accuracy_m ? <small className={point.accuracy_m <= 30 ? 'is-precise' : 'is-warning'}>GPS ±{point.accuracy_m} ม. · {point.accuracy_m <= 30 ? 'ความแม่นยำสูง' : 'ควรรอจับสัญญาณกลางแจ้ง'}</small> : null}</span></div>}
+    {point && <label className="route-pin-name"><span><PencilLine size={14} /> ตั้งชื่อหมุดนี้</span><input className="input" value={point.name || ''} onChange={(event) => onRename?.(event.target.value)} placeholder={`ชื่อ${title} เช่น โรงงาน / บริษัท / จุดรับสินค้า`} maxLength={180} /></label>}
   </div>;
 }
 
-function RouteMap({ origin, destination, route, onMapPick }) {
+function RouteMap({ origin, destination, route, onMapPick, activeTarget }) {
   const mapNode = useRef(null);
   const mapInstance = useRef(null);
   const routeLayer = useRef(null);
@@ -88,7 +93,7 @@ function RouteMap({ origin, destination, route, onMapPick }) {
     setTimeout(() => map.invalidateSize(), 40);
   }, [origin, destination, route]);
   if (!window.L) return <div className="route-map-unavailable"><Navigation size={34} /><strong>กำลังโหลดแผนที่ดาวเทียม…</strong><span>หากไม่แสดง กรุณาตรวจสอบอินเทอร์เน็ต</span></div>;
-  return <div ref={mapNode} className="route-live-map" aria-label="แผนที่ดาวเทียมและเส้นทางรถยนต์" />;
+  return <div ref={mapNode} className={`route-live-map is-picking-${activeTarget}`} aria-label={`แผนที่ดาวเทียม กำลังเลือก${activeTarget === 'origin' ? 'ต้นทาง' : 'ปลายทาง'}`} />;
 }
 
 export default function RouteDistancePlanner({ onDistance, onRoute, compact = false }) {
@@ -97,17 +102,18 @@ export default function RouteDistancePlanner({ onDistance, onRoute, compact = fa
   const [route, setRoute] = useState(null);
   const [busy, setBusy] = useState(false);
   const [status, setStatus] = useState(null);
+  const [activeTarget, setActiveTarget] = useState('origin');
   const calculatedKeyRef = useRef('');
   const requestKeyRef = useRef('');
   useEffect(() => { api.mapStatus().then((result) => setStatus(result.data)).catch(() => {}); }, []);
   async function pickFromMap(lat, lon) {
     try {
       const result = await api.reversePlace(lat, lon);
-      if (!origin) setOrigin(result.data); else setDestination(result.data);
+      if (activeTarget === 'origin') { setOrigin(result.data); setActiveTarget('destination'); } else setDestination(result.data);
       setRoute(null);
     } catch (_) {
       const point = { id: `map-${lat}-${lon}`, name: `พิกัดจากแผนที่ ${lat.toFixed(6)}, ${lon.toFixed(6)}`, lat, lon, type: 'map' };
-      if (!origin) setOrigin(point); else setDestination(point);
+      if (activeTarget === 'origin') { setOrigin(point); setActiveTarget('destination'); } else setDestination(point);
       setRoute(null);
     }
   }
@@ -117,7 +123,7 @@ export default function RouteDistancePlanner({ onDistance, onRoute, compact = fa
     if (!force && (calculatedKeyRef.current === key || requestKeyRef.current === key)) return;
     requestKeyRef.current = key;
     setBusy(true);
-    try { const result = await api.calculateRoute(origin.lat, origin.lon, destination.lat, destination.lon); calculatedKeyRef.current = key; setRoute(result.data); onDistance?.(result.data.distance_km); onRoute?.({ origin, destination, ...result.data }); }
+    try { const result = await api.calculateRoute(origin.lat, origin.lon, destination.lat, destination.lon); calculatedKeyRef.current = key; setRoute(result.data); onDistance?.(result.data.distance_km); }
     catch (error) { requestKeyRef.current = ''; alertError(error, 'คำนวณเส้นทางไม่สำเร็จ'); }
     finally { requestKeyRef.current = ''; setBusy(false); }
   }
@@ -126,9 +132,34 @@ export default function RouteDistancePlanner({ onDistance, onRoute, compact = fa
     const timer = window.setTimeout(() => calculate(false), 450);
     return () => window.clearTimeout(timer);
   }, [origin?.lat, origin?.lon, destination?.lat, destination?.lon]);
+  useEffect(() => {
+    if (route && origin && destination) onRoute?.({ origin, destination, ...route });
+  }, [route?.calculated_at, origin?.name, destination?.name]);
+  const pickOrigin = (point) => { setOrigin(point); setRoute(null); setActiveTarget('destination'); };
+  const pickDestination = (point) => { setDestination(point); setRoute(null); setActiveTarget('destination'); };
   return <section className={`route-planner-card ${compact ? 'is-compact' : ''}`}>
-    <div className="route-planner-head"><div><span><Navigation size={21} /></span><div><h2>GPS ตรวจสอบระยะทาง</h2><p>ค้นหาต้นทาง–ปลายทาง แล้วคำนวณกิโลเมตรตามเส้นทางรถยนต์</p></div></div><b>ROUTE VERIFIED</b></div>
+    <div className="route-planner-head"><div><span><Navigation size={21} /></span><div><h2>GPS ตรวจสอบระยะทาง</h2><p>ค้นหา ปักหมุด ตั้งชื่อเอง และคำนวณระยะตามถนน</p></div></div><b>ROUTE VERIFIED</b></div>
     {status && <div className={`route-provider-status ${status.google_enabled ? 'is-google' : 'is-fallback'}`}><ShieldCheck size={16} /><span><b>{status.search_provider}</b> · คำนวณด้วย {status.route_provider}</span></div>}
-    <div className="route-planner-body"><div className="route-pickers"><PointPicker title="ต้นทาง" point={origin} onPick={(p) => { setOrigin(p); setRoute(null); }} allowGps /><PointPicker title="ปลายทาง" point={destination} onPick={(p) => { setDestination(p); setRoute(null); }} /><p className="route-map-hint">ค้นหาชื่อทั่วโลก, กรอกพิกัด หรือคลิกบนแผนที่ — เมื่อเลือกครบ 2 จุด ระบบคำนวณให้อัตโนมัติ</p><button type="button" className="route-calculate-button" onClick={() => calculate(true)} disabled={busy || !origin || !destination}>{busy ? <LoaderCircle className="spin" size={19} /> : <Route size={19} />} {busy ? 'กำลังคำนวณอัตโนมัติ…' : route ? 'ตรวจสอบเส้นทางใหม่' : 'รอเลือกต้นทางและปลายทาง'}</button>{route && <div className="route-proof"><div><small>ระยะทางตามถนน</small><strong>{number(route.distance_km, 2)} <span>กม.</span></strong></div><div><small>เวลาโดยประมาณ</small><strong>{Math.floor(route.duration_minutes / 60) ? `${Math.floor(route.duration_minutes / 60)} ชม. ` : ''}{route.duration_minutes % 60} นาที</strong></div><a href={googleDirectionsUrl(origin, destination)} target="_blank" rel="noreferrer"><ExternalLink size={16} /> เปิดตรวจสอบใน Google Maps</a><p>คำนวณอัตโนมัติเมื่อ {new Date(route.calculated_at).toLocaleString('th-TH')} · {route.provider}</p></div>}</div><div className="route-map-panel"><RouteMap origin={origin} destination={destination} route={route} onMapPick={pickFromMap} /></div></div>
+    <div className="route-pin-mode" role="group" aria-label="เลือกชนิดหมุดที่จะปักบนแผนที่">
+      <button type="button" className={activeTarget === 'origin' ? 'is-active is-origin' : ''} onClick={() => setActiveTarget('origin')}><i>A</i><span><small>กำลังเลือก</small><strong>ต้นทาง</strong></span></button>
+      <button type="button" className={activeTarget === 'destination' ? 'is-active is-destination' : ''} onClick={() => setActiveTarget('destination')}><i>B</i><span><small>กำลังเลือก</small><strong>ปลายทาง</strong></span></button>
+      <p><MapPin size={15} /> เลือก A หรือ B แล้วแตะตำแหน่งบนแผนที่</p>
+    </div>
+    <div className="route-planner-body">
+      <div className="route-pickers">
+        <PointPicker title="ต้นทาง" kind="origin" point={origin} onPick={pickOrigin} onRename={(name) => setOrigin((current) => ({ ...current, name }))} allowGps />
+        <PointPicker title="ปลายทาง" kind="destination" point={destination} onPick={pickDestination} onRename={(name) => setDestination((current) => ({ ...current, name }))} />
+        <p className="route-map-hint">ค้นหาชื่อทั่วโลก, กรอกพิกัด 6 ตำแหน่ง หรือเลือก A/B แล้วคลิกแผนที่ จากนั้นตั้งชื่อหมุดเองได้</p>
+        <button type="button" className="route-calculate-button" onClick={() => calculate(true)} disabled={busy || !origin || !destination}>{busy ? <LoaderCircle className="spin" size={19} /> : <Route size={19} />} {busy ? 'กำลังคำนวณอัตโนมัติ…' : route ? 'ตรวจสอบเส้นทางใหม่' : 'รอเลือกต้นทางและปลายทาง'}</button>
+        {route && <div className="route-proof"><div><small>ระยะทางตามถนน</small><strong>{number(route.distance_km, 2)} <span>กม.</span></strong></div><div><small>เวลาโดยประมาณ</small><strong>{Math.floor(route.duration_minutes / 60) ? `${Math.floor(route.duration_minutes / 60)} ชม. ` : ''}{route.duration_minutes % 60} นาที</strong></div><a href={googleDirectionsUrl(origin, destination)} target="_blank" rel="noreferrer"><ExternalLink size={16} /> เปิดตรวจสอบใน Google Maps</a><p>{route.route_quality || 'คำนวณตามเครือข่ายถนน'} · {new Date(route.calculated_at).toLocaleString('th-TH')} · {route.provider}</p></div>}
+      </div>
+      <div className="route-map-panel">
+        <aside className="route-map-selection" aria-live="polite">
+          <div className="is-origin"><i>A</i><span><small>ต้นทาง</small><strong>{origin?.name || 'ยังไม่เลือก'}</strong></span></div>
+          <div className="is-destination"><i>B</i><span><small>ปลายทาง</small><strong>{destination?.name || 'ยังไม่เลือก'}</strong></span></div>
+        </aside>
+        <RouteMap origin={origin} destination={destination} route={route} onMapPick={pickFromMap} activeTarget={activeTarget} />
+      </div>
+    </div>
   </section>;
 }
